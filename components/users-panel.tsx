@@ -21,6 +21,8 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
   const termOptions = Array.from(new Set([...data.users.flatMap(termsOf), currentTerm()])).sort();
   const usersByTerm = data.users.filter((user) => termsOf(user).includes(selectedTerm));
   const prevTerm = previousTerm(selectedTerm);
+  const [addQuery, setAddQuery] = useState("");
+  const addCandidates = data.users.filter((user) => !termsOf(user).includes(selectedTerm) && user.name.includes(addQuery.trim()));
   const carryOverUsers = data.users.filter((user) => termsOf(user).includes(prevTerm) && !termsOf(user).includes(selectedTerm));
   const selectedUser = usersByTerm.find((user) => user.id === selectedUserId) ?? usersByTerm[0] ?? null;
   const selectedUserIndex = usersByTerm.findIndex((user) => user.id === selectedUserId);
@@ -49,6 +51,12 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
     persist({ ...data, users: data.users.map((user) => ids.has(user.id) ? { ...user, activeTerms: [...termsOf(user), selectedTerm].sort(), updatedAt: nowIso() } : user) });
   }
 
+  // 기존 멤버를 한 명씩 이 학기에 넣는다.
+  function addToTerm(userId: string) {
+    persist({ ...data, users: data.users.map((user) => user.id === userId ? { ...user, activeTerms: [...termsOf(user), selectedTerm].sort(), updatedAt: nowIso() } : user) });
+    setSelectedUserId(userId);
+  }
+
   // 계정은 남기고 선택한 학기에서만 모두 뺀다.
   function clearTerm() {
     if (!window.confirm(`${termLabel(selectedTerm)} 명단에서 ${usersByTerm.length}명을 모두 뺄까요? 계정과 다른 학기 기록은 그대로 남습니다.`)) return;
@@ -57,8 +65,14 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
 
   function createUser() {
     const name = form.name.trim();
-    // 이름으로 로그인하므로 이름이 겹치면 안 된다.
-    if (!allowed || !name || data.users.some((user) => user.name === name)) return;
+    if (!allowed || !name) return;
+    // 이름으로 로그인하므로 같은 이름은 새로 만들지 않고, 기존 멤버를 이 학기에 넣는다.
+    const existing = data.users.find((user) => user.name === name);
+    if (existing) {
+      if (!termsOf(existing).includes(selectedTerm)) addToTerm(existing.id);
+      setForm({ ...form, name: "" });
+      return;
+    }
     const team = data.teams.find((item) => item.id === form.teamId);
     const createdAt = nowIso();
     const user: ClubUser = {
@@ -136,6 +150,25 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
               {termLabel(prevTerm)} 멤버 {carryOverUsers.length}명 불러오기
             </button>
           )}
+          <div className="mb-4 space-y-2">
+            <input
+              className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              value={addQuery}
+              onChange={(event) => setAddQuery(event.target.value)}
+              placeholder="기존 멤버 이름으로 이 학기에 추가"
+            />
+            {addQuery.trim() && (
+              <div className="space-y-1.5">
+                {addCandidates.length === 0 && <p className="px-1 text-sm text-muted-foreground">추가할 멤버가 없습니다.</p>}
+                {addCandidates.slice(0, 8).map((user) => (
+                  <div key={user.id} className="flex items-center justify-between gap-2 rounded-xl bg-background px-3 py-2 text-sm">
+                    <span className="min-w-0 truncate font-medium">{user.name} <span className="text-muted-foreground">{termsOf(user).map(termLabel).join(", ") || "학기 없음"}</span></span>
+                    <button type="button" className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground" onClick={() => addToTerm(user.id)}>추가</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {usersByTerm.length === 0 && <p className="text-sm text-muted-foreground">이 학기에 등록된 멤버가 없습니다.</p>}
           {usersByTerm.length > 0 && (
             <button type="button" className="mb-4 w-full rounded-full border border-destructive/40 px-4 py-2.5 text-sm font-semibold text-destructive" onClick={clearTerm}>
