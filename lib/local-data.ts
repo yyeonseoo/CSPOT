@@ -5,9 +5,11 @@ export const STORAGE_KEY = "club-scheduler-local-data-v4";
 export const SESSION_KEY = "club-scheduler-session-v4";
 const SEED_VERSION_KEY = "club-scheduler-seed-version";
 // 하드코딩된 이력/곡 데이터를 바꾸면 이 값을 올려야 기존 로컬 데이터에 한 번 다시 반영된다.
-const SEED_VERSION = "2";
+const SEED_VERSION = "3";
 
 const now = () => new Date().toISOString();
+// 예전 데이터는 연도 단위였다. 등록된 명단 기준으로 25년은 2학기, 26년은 1학기에 해당한다.
+const seedTerm = (year: number) => `${year}-${year === 2025 ? 2 : 1}`;
 const danceTeamColor = "#7BC7F2";
 const memberAliases: Record<string, string> = {
   "리아": "유리아",
@@ -123,7 +125,7 @@ export function createSeedData(): AppData {
       teamId: "team_plan",
       teamColor: "#8BDDD6",
       performanceColors: {},
-      activeYears: [2026],
+      activeTerms: [seedTerm(2026)],
       role: "SUPER_ADMIN",
       mustChangePassword: false,
       status: "ACTIVE",
@@ -142,7 +144,6 @@ export function createSeedData(): AppData {
     schedules: [],
     surveys: [],
     availabilityResponses: [],
-    ambiguousTimes: [],
     practiceCandidates: [],
     notices: [],
     auditLogs: [],
@@ -160,7 +161,7 @@ export function readData(): AppData {
   return data;
 }
 
-function normalizeData(parsed: AppData): AppData {
+export function normalizeData(parsed: AppData): AppData {
   const archive2025MemberNames = new Set(
     (parsed.archiveSongs ?? [])
       .filter((song) => song.archiveKey?.includes("2025") || song.source?.includes("2025"))
@@ -170,16 +171,23 @@ function normalizeData(parsed: AppData): AppData {
     ...(parsed.songMembers ?? []).map((member) => member.userId),
     ...(parsed.performances ?? []).flatMap((performance) => performance.memberIds ?? []),
   ]);
+  // 곡별 조사/승인 요청 방식이던 예전 데이터는 버린다.
+  const surveys = (parsed.surveys ?? []).filter((survey) => !("songId" in survey)).map((survey) => ({ ...survey, title: survey.title ?? "연습 일정 조사", performanceIds: survey.performanceIds ?? [] }));
+  const surveyIds = new Set(surveys.map((survey) => survey.id));
+  const { ambiguousTimes: _legacyAmbiguousTimes, ...current } = parsed as AppData & { ambiguousTimes?: unknown };
+  void _legacyAmbiguousTimes;
   return {
-    ...parsed,
-    archiveSongs: dedupeArchiveSongs(parsed.archiveSongs ?? []),
-    practiceCandidates: dedupePracticeCandidates(parsed.practiceCandidates ?? []),
+    ...current,
+    archiveSongs: dedupeArchiveSongs((parsed.archiveSongs ?? []).map((song) => ({ ...song, performanceTitle: song.performanceTitle.replace(/\s*·\s*/g, ", ") }))),
+    surveys,
+    availabilityResponses: (parsed.availabilityResponses ?? []).filter((response) => surveyIds.has(response.surveyId)),
+    practiceCandidates: (parsed.practiceCandidates ?? []).filter((candidate) => typeof candidate.location === "string" && surveyIds.has(candidate.surveyId)),
     performances: parsed.performances.map((performance) => ({ ...performance, memberIds: performance.memberIds ?? [] })),
-    users: parsed.users.map((user) => ({
+    users: parsed.users.map(({ activeYears, ...user }: ClubUser & { activeYears?: number[] }) => ({
       ...user,
       teamColor: user.teamColor ?? danceTeamColor,
       performanceColors: user.performanceColors ?? {},
-      activeYears: user.activeYears ?? inferActiveYears(user, archive2025MemberNames, activeCurrentUserIds),
+      activeTerms: user.activeTerms ?? (activeYears ?? inferActiveYears(user, archive2025MemberNames, activeCurrentUserIds)).map(seedTerm),
     })),
   };
 }
@@ -196,19 +204,35 @@ function applySeedData(data: AppData): AppData {
   return mergeSimilarArchiveSongs({ ...currentArchiveData, archiveSongs: dedupeArchiveSongs(currentArchiveData.archiveSongs) });
 }
 
-function normalizeArchiveTitle(title: string) {
-  return title.toLowerCase().replace(/\*?\(?창작\)?/g, "").replace(/[^a-z0-9가-힣]/g, "");
+const originalTagPattern = /\s*\*?\(?창작\)?/g;
+
+// "Pose!*창작", "FEIN (창작)" 같은 곡명에서 창작 표시를 떼어 낸다. 화면에서는 태그로 따로 보여준다.
+export function splitOriginalTag(title: string) {
+  return { title: title.replace(originalTagPattern, "").trim(), original: title.includes("창작") };
 }
 
-// 곡명이 같거나 한쪽이 다른 쪽을 포함하고(메들리 일부 등), 인원이 같거나 한 명만 더 있으면 같은 곡으로 본다.
+function normalizeArchiveTitle(title: string) {
+  return title.toLowerCase().replace(originalTagPattern, "").replace(/[^a-z0-9가-힣]/g, "");
+}
+
+function splitPerformanceTitles(value: string) {
+  return value.split(/\s*[·,]\s*/).map((title) => title.trim()).filter(Boolean);
+}
+
+const isSubset = <T,>(small: T[], large: T[]) => small.every((value) => large.includes(value));
+
+// 곡명이 같거나 한쪽이 다른 쪽을 포함하고(메들리 일부 등), 아래 중 하나면 같은 곡으로 본다.
+// - 인원이 같거나 한 명만 더 있음
+// - 한 카드의 인원·공연·연도가 다른 카드에 전부 들어 있음 (이미 병합된 카드의 원본이 다시 생긴 경우)
 function isSameArchiveSong(a: ArchiveSong, b: ArchiveSong) {
   const titleA = normalizeArchiveTitle(a.songTitle);
   const titleB = normalizeArchiveTitle(b.songTitle);
   if (!titleA || !titleB || !(titleA.includes(titleB) || titleB.includes(titleA))) return false;
   if (a.teamId !== b.teamId) return false;
-  const [small, large] = a.memberNames.length <= b.memberNames.length ? [a.memberNames, b.memberNames] : [b.memberNames, a.memberNames];
-  const largeSet = new Set(large);
-  return small.every((name) => largeSet.has(name)) && large.length - small.length <= 1;
+  const [small, large] = a.memberNames.length <= b.memberNames.length ? [a, b] : [b, a];
+  if (!isSubset(small.memberNames, large.memberNames)) return false;
+  if (large.memberNames.length - small.memberNames.length <= 1) return true;
+  return isSubset(splitPerformanceTitles(small.performanceTitle), splitPerformanceTitles(large.performanceTitle)) && isSubset(archiveYears(small), archiveYears(large));
 }
 
 export function mergeArchiveItems(items: ArchiveSong[], songs: Song[]): ArchiveSong {
@@ -222,12 +246,12 @@ export function mergeArchiveItems(items: ArchiveSong[], songs: Song[]): ArchiveS
   return {
     ...primary,
     archiveKey: primary.archiveKey.startsWith("current-") ? `merged-${primary.id}` : primary.archiveKey,
-    performanceTitle: unique(items.flatMap((item) => item.performanceTitle.split(" · ").map((title) => title.trim()).filter(Boolean))).join(" · "),
+    performanceTitle: unique(items.flatMap((item) => splitPerformanceTitles(item.performanceTitle))).join(", "),
     memberNames: unique(items.flatMap((item) => item.memberNames)),
     durationSeconds: primary.durationSeconds ?? items.find((item) => item.durationSeconds)?.durationSeconds,
     linkedCurrentSongIds,
     years,
-    source: years.length ? years.map((year) => String(year).slice(2)).join(" · ") : primary.source,
+    source: years.length ? years.map((year) => String(year).slice(2)).join(", ") : primary.source,
     updatedAt: now(),
   };
 }
@@ -235,22 +259,17 @@ export function mergeArchiveItems(items: ArchiveSong[], songs: Song[]): ArchiveS
 function mergeSimilarArchiveSongs(data: AppData): AppData {
   const groups: ArchiveSong[][] = [];
   for (const song of data.archiveSongs) {
-    const group = groups.find((items) => items.some((item) => isSameArchiveSong(item, song)));
-    if (group) group.push(song);
-    else groups.push([song]);
+    // 여러 묶음과 동시에 같은 곡이면 그 묶음들도 하나로 합친다.
+    // 지금 진행 중인 곡 카드(current-)는 곡과 계속 동기화돼야 하므로 자동으로 합치지 않는다.
+    const matches = song.archiveKey.startsWith("current-") ? [] : groups.filter((items) => !items[0].archiveKey.startsWith("current-") && items.some((item) => isSameArchiveSong(item, song)));
+    if (matches.length === 0) groups.push([song]);
+    else {
+      matches[0].push(...matches.slice(1).flat(), song);
+      matches.slice(1).forEach((items) => groups.splice(groups.indexOf(items), 1));
+    }
   }
   if (groups.length === data.archiveSongs.length) return data;
   return { ...data, archiveSongs: groups.map((items) => items.length === 1 ? items[0] : mergeArchiveItems(items, data.songs)) };
-}
-
-function dedupePracticeCandidates(candidates: AppData["practiceCandidates"]) {
-  const seen = new Set<string>();
-  return candidates.filter((candidate) => {
-    const key = `${candidate.songId}::${candidate.startsAt}::${candidate.endsAt}::${candidate.status}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 function inferActiveYears(user: ClubUser, archiveMemberNames: Set<string>, activeCurrentUserIds: Set<string>) {
@@ -277,6 +296,17 @@ function dedupeArchiveSongs(archiveSongs: ArchiveSong[]) {
     seen.add(key);
     return true;
   });
+}
+
+// 곡팀장이 그 곡 팀원이 아니게 되면(멤버 삭제, 공연에서 제외 등) 남은 팀원 중 첫 사람을 곡팀장으로 둔다.
+export function fixSongLeaders(data: AppData): AppData {
+  return {
+    ...data,
+    songs: data.songs.map((song) => {
+      const memberIds = data.songMembers.filter((member) => member.songId === song.id).map((member) => member.userId);
+      return memberIds.includes(song.leaderUserId) ? song : { ...song, leaderUserId: memberIds[0] ?? "" };
+    }),
+  };
 }
 
 export function syncCurrentSongsToArchive(data: AppData): AppData {
@@ -349,18 +379,18 @@ function normalizeMemberAliases(data: AppData): AppData {
       ...user,
       name: canonicalName,
       username: user.username === user.name ? canonicalName : user.username,
-      activeYears: user.activeYears ?? [],
+      activeTerms: user.activeTerms ?? [],
     };
 
     if (!existing) {
-      mergedUserByCanonicalName.set(canonicalName, { ...normalizedUser, activeYears: Array.from(new Set(normalizedUser.activeYears)).sort() });
+      mergedUserByCanonicalName.set(canonicalName, { ...normalizedUser, activeTerms: Array.from(new Set(normalizedUser.activeTerms)).sort() });
       aliasUserIdToCanonicalId.set(user.id, user.id);
       continue;
     }
 
-    const activeYears = Array.from(new Set([...(existing.activeYears ?? []), ...(normalizedUser.activeYears ?? [])])).sort();
+    const activeTerms = Array.from(new Set([...(existing.activeTerms ?? []), ...(normalizedUser.activeTerms ?? [])])).sort();
     if (existing.id === user.id) {
-      mergedUserByCanonicalName.set(canonicalName, { ...existing, ...normalizedUser, activeYears });
+      mergedUserByCanonicalName.set(canonicalName, { ...existing, ...normalizedUser, activeTerms });
       aliasUserIdToCanonicalId.set(user.id, user.id);
       continue;
     }
@@ -369,7 +399,7 @@ function normalizeMemberAliases(data: AppData): AppData {
       ...existing,
       name: canonicalName,
       username: existing.username === existing.name ? canonicalName : existing.username,
-      activeYears,
+      activeTerms,
       updatedAt: now(),
     });
     aliasUserIdToCanonicalId.set(user.id, existing.id);
@@ -393,7 +423,6 @@ function normalizeMemberAliases(data: AppData): AppData {
     performances: data.performances.map((performance) => ({ ...performance, memberIds: dedupeIds(performance.memberIds) })),
     songMembers,
     availabilityResponses: data.availabilityResponses.map((response) => ({ ...response, userId: mapUserId(response.userId) })),
-    ambiguousTimes: data.ambiguousTimes.map((time) => ({ ...time, userId: mapUserId(time.userId) })),
     schedules: data.schedules.map((schedule) => ({ ...schedule, ownerUserId: schedule.ownerUserId ? mapUserId(schedule.ownerUserId) : schedule.ownerUserId })),
     archiveSongs: data.archiveSongs.map((song) => ({
       ...song,
@@ -438,9 +467,9 @@ function withCurrentRap515Day(data: AppData): AppData {
   const allMemberNames = new Set(currentRap515DayRows.flatMap((row) => row.memberNames));
   const users = data.users.map((user) => {
     if (!allMemberNames.has(user.name)) return user;
-    const activeYears = Array.from(new Set([...(user.activeYears ?? []), 2026])).sort();
-    const changed = user.teamId !== rapTeam.id || activeYears.length !== (user.activeYears ?? []).length;
-    return changed ? { ...user, teamId: rapTeam.id, activeYears, updatedAt: createdAt } : user;
+    const activeTerms = Array.from(new Set([...(user.activeTerms ?? []), seedTerm(2026)])).sort();
+    const changed = user.teamId !== rapTeam.id || activeTerms.length !== (user.activeTerms ?? []).length;
+    return changed ? { ...user, teamId: rapTeam.id, activeTerms, updatedAt: createdAt } : user;
   });
   const existingNames = new Set(users.map((user) => user.name));
   const missingUsers: ClubUser[] = Array.from(allMemberNames)
@@ -453,7 +482,7 @@ function withCurrentRap515Day(data: AppData): AppData {
       teamId: rapTeam.id,
       teamColor: rapTeam.color,
       performanceColors: {},
-      activeYears: [2026],
+      activeTerms: [seedTerm(2026)],
       role: "USER",
       mustChangePassword: true,
       status: "ACTIVE",
@@ -579,7 +608,7 @@ function withCompletedDanceArchive(data: AppData, archiveRows: readonly DanceArc
         teamId: danceTeam.id,
         teamColor: danceTeam.color,
         performanceColors: {},
-        activeYears: [year],
+        activeTerms: [seedTerm(year)],
         role: "USER",
         mustChangePassword: true,
         status: "ACTIVE",
@@ -589,12 +618,12 @@ function withCompletedDanceArchive(data: AppData, archiveRows: readonly DanceArc
   let activeYearChanged = false;
   const usersWithActiveYears = data.users.map((user) => {
     if (!allNames.has(user.name)) return user;
-    const activeYears = Array.from(new Set([...(user.activeYears ?? []), year])).sort();
-    const currentYears = user.activeYears ?? [];
-    const hasSameYears = activeYears.length === currentYears.length && activeYears.every((year) => currentYears.includes(year));
-    if (hasSameYears) return user;
+    const activeTerms = Array.from(new Set([...(user.activeTerms ?? []), seedTerm(year)])).sort();
+    const currentTerms = user.activeTerms ?? [];
+    const hasSameTerms = activeTerms.length === currentTerms.length && activeTerms.every((term) => currentTerms.includes(term));
+    if (hasSameTerms) return user;
     activeYearChanged = true;
-    return { ...user, activeYears };
+    return { ...user, activeTerms };
   });
   if (!archiveSongs.length && !newUsers.length && hasDanceTeam && !activeYearChanged) return data;
   return {

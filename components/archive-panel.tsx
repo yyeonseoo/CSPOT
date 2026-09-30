@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
-import { mergeArchiveItems, createAudit } from "@/lib/local-data";
-import { alpha, archiveSourceLabel, teamColor } from "@/lib/schedule";
+import { createAudit, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
+import { archiveSourceLabel, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ArchiveSong, ClubUser, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -124,22 +124,18 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
   function deleteArchive(item: ArchiveSong) {
     const currentSong = data.songs.find((song) => item.archiveKey === `current-${song.performanceId}-${song.id}`);
     const message = currentSong
-      ? `${item.songTitle} 현재 곡과 연결된 이력을 삭제할까요? 원본 곡과 관련 조사·일정도 함께 삭제됩니다.`
+      ? `${item.songTitle} 현재 곡과 연결된 이력을 삭제할까요? 원본 곡과 관련 연습 요청·일정도 함께 삭제됩니다.`
       : `${item.songTitle} 이력 카드를 삭제할까요?`;
     if (!window.confirm(message)) return;
     if (!currentSong) {
       persist({ ...data, archiveSongs: data.archiveSongs.filter((archive) => archive.id !== item.id) });
       return;
     }
-    const songSurveyIds = new Set(data.surveys.filter((survey) => survey.songId === currentSong.id).map((survey) => survey.id));
     persist({
       ...data,
       performances: data.performances.map((performance) => performance.id === currentSong.performanceId ? { ...performance, runtimeBreaks: (performance.runtimeBreaks ?? []).filter((runtimeBreak) => runtimeBreak.afterSongId !== currentSong.id), updatedAt: nowIso() } : performance),
       songs: data.songs.filter((song) => song.id !== currentSong.id),
       songMembers: data.songMembers.filter((member) => member.songId !== currentSong.id),
-      surveys: data.surveys.filter((survey) => survey.songId !== currentSong.id),
-      availabilityResponses: data.availabilityResponses.filter((response) => !songSurveyIds.has(response.surveyId)),
-      ambiguousTimes: data.ambiguousTimes.filter((time) => !songSurveyIds.has(time.surveyId)),
       practiceCandidates: data.practiceCandidates.filter((candidate) => candidate.songId !== currentSong.id),
       schedules: data.schedules.filter((schedule) => schedule.songId !== currentSong.id),
       archiveSongs: data.archiveSongs.filter((archive) => archive.id !== item.id),
@@ -171,7 +167,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
       <Panel title="과거 공연 이력 DB">
         <div>
           <input
-            className="w-full rounded-2xl border border-white/80 bg-white/70 px-5 py-4 text-sm font-bold outline-none transition placeholder:text-muted-foreground/70 focus:ring-4 focus:ring-primary/15"
+            className="w-full rounded-xl border border-border bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="공연명, 곡명, 팀원 이름 검색"
@@ -181,22 +177,22 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
           {selectedNames.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {selectedNames.map((name) => (
-                <button key={name} type="button" className="rounded-full bg-primary/15 px-3 py-1.5 text-xs font-black text-primary" onClick={() => setSelectedNames((names) => names.filter((item) => item !== name))}>
+                <button key={name} type="button" className="rounded-full bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary" onClick={() => setSelectedNames((names) => names.filter((item) => item !== name))}>
                   {name} 지우기
                 </button>
               ))}
-              <button type="button" className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-black text-muted-foreground" onClick={() => setSelectedNames([])}>전체 해제</button>
+              <button type="button" className="rounded-full bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground" onClick={() => setSelectedNames([])}>전체 해제</button>
             </div>
           )}
           {normalizedQuery && filteredArchiveMembers.length > 0 && (
-            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-2xl bg-primary/8 p-3">
+            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-xl bg-primary/8 p-3">
               {filteredArchiveMembers.slice(0, 40).map((name) => {
                 const selected = selectedNames.includes(name);
                 return (
                   <button
                     key={name}
                     type="button"
-                    className={cn("rounded-full px-3 py-1.5 text-xs font-black transition", selected ? "bg-primary text-primary-foreground" : "bg-white/75 text-foreground hover:bg-white")}
+                    className={cn("rounded-full px-3 py-1.5 text-xs font-semibold transition", selected ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted")}
                     onClick={() => setSelectedNames((names) => (names.includes(name) ? names.filter((item) => item !== name) : [...names, name]))}
                   >
                     {name}
@@ -210,39 +206,39 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
       {mergeBase && (
         <Panel title="곡 병합">
           <div className="space-y-4">
-            <div className="rounded-3xl bg-primary/10 p-4">
-              <p className="text-sm font-black text-primary">기준 카드</p>
-              <p className="mt-1 text-lg font-black">{mergeBase.songTitle}</p>
-              <p className="mt-1 text-sm font-bold text-muted-foreground">{mergeBase.performanceTitle} · 팀장 {mergeBase.leaderName || "미지정"}</p>
+            <div className="rounded-2xl bg-primary/10 p-4">
+              <p className="text-sm font-semibold text-primary">기준 카드</p>
+              <p className="mt-1 text-lg font-semibold">{splitOriginalTag(mergeBase.songTitle).title}{splitOriginalTag(mergeBase.songTitle).original && <span className="ml-2 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-xs text-white font-semibold text-amber-700">창작</span>}</p>
+              <p className="mt-1 text-sm font-medium text-muted-foreground">{mergeBase.performanceTitle} · 팀장 {mergeBase.leaderName || "미지정"}</p>
             </div>
             <input
-              className="w-full rounded-2xl border border-white/80 bg-white/70 px-5 py-4 text-sm font-bold outline-none transition placeholder:text-muted-foreground/70 focus:ring-4 focus:ring-primary/15"
+              className="w-full rounded-xl border border-border bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
               value={mergeQuery}
               onChange={(event) => setMergeQuery(event.target.value)}
               placeholder="병합할 곡 검색"
             />
-            <div className="grid max-h-80 gap-2 overflow-y-auto rounded-3xl bg-primary/8 p-3">
-              {mergeCandidates.length === 0 && <p className="p-3 text-sm font-bold text-muted-foreground">병합할 곡을 찾지 못했습니다.</p>}
+            <div className="grid max-h-80 gap-2 overflow-y-auto rounded-2xl bg-primary/8 p-3">
+              {mergeCandidates.length === 0 && <p className="p-3 text-sm font-medium text-muted-foreground">병합할 곡을 찾지 못했습니다.</p>}
               {mergeCandidates.slice(0, 80).map((item) => {
                 const selected = mergeSelectedIds.includes(item.id);
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    className={cn("rounded-2xl border px-4 py-3 text-left transition", selected ? "border-primary bg-primary/15" : "border-white/70 bg-white/55 hover:bg-white/80")}
+                    className={cn("rounded-xl border px-4 py-3 text-left transition", selected ? "border-primary bg-primary/15" : "border-border bg-background hover:bg-background")}
                     onClick={() => setMergeSelectedIds((ids) => (ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id]))}
                   >
-                    <p className="font-black">{item.songTitle}</p>
-                    <p className="mt-1 text-xs font-bold text-muted-foreground">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}</p>
+                    <p className="font-semibold">{splitOriginalTag(item.songTitle).title}{splitOriginalTag(item.songTitle).original && <span className="ml-2 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-xs text-white font-semibold text-amber-700">창작</span>}</p>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}</p>
                   </button>
                 );
               })}
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" className="rounded-2xl bg-primary px-5 py-4 text-sm font-black text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-45" disabled={mergeSelectedIds.length === 0} onClick={mergeArchiveSongs}>
+              <button type="button" className="rounded-xl bg-primary px-5 py-4 text-sm font-semibold text-primary-foreground disabled:opacity-45" disabled={mergeSelectedIds.length === 0} onClick={mergeArchiveSongs}>
                 {mergeSelectedIds.length + 1}개 카드 병합
               </button>
-              <button type="button" className="rounded-2xl bg-white/70 px-5 py-4 text-sm font-black shadow-sm" onClick={cancelMerge}>취소</button>
+              <button type="button" className="rounded-xl bg-background px-5 py-4 text-sm font-semibold shadow-sm" onClick={cancelMerge}>취소</button>
             </div>
           </div>
         </Panel>
@@ -255,25 +251,25 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
             return (
               <SwipeActions key={item.id} onEdit={() => beginArchiveEdit(item)} onDelete={() => deleteArchive(item)}>
               <div
-                className="cursor-pointer rounded-3xl border p-4 transition hover:shadow-sm"
-                style={{ borderColor: teamColor(team), backgroundColor: alpha(teamColor(team), "22") }}
+                className="cursor-pointer rounded-2xl p-4 text-neutral-900 transition"
+                style={{ backgroundColor: teamColor(team) }}
                 onClick={() => handleArchiveClick(item)}
                 onDoubleClick={() => handleArchiveDoubleClick(item)}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-lg font-black">{item.songTitle}</p>
-                    <p className="text-sm font-bold text-muted-foreground">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}{item.durationSeconds ? ` · ${formatSongDuration(item.durationSeconds)}` : ""}</p>
+                    <p className="text-lg font-semibold">{splitOriginalTag(item.songTitle).title}{splitOriginalTag(item.songTitle).original && <span className="ml-2 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-xs text-white font-semibold text-amber-700">창작</span>}</p>
+                    <p className="text-sm font-medium text-neutral-700">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}{item.durationSeconds ? ` · ${formatSongDuration(item.durationSeconds)}` : ""}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedNames.length > 0 && <span className="w-fit rounded-full bg-primary/15 px-3 py-1 text-xs font-black text-primary">{selectedMatchCount}/{selectedNames.length}명 일치</span>}
-                    <span className="w-fit rounded-full bg-white/65 px-3 py-1 text-xs font-black text-muted-foreground">{archiveSourceLabel(item)}</span>
+                    {selectedNames.length > 0 && <span className="w-fit rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">{selectedMatchCount}/{selectedNames.length}명 일치</span>}
+                    <span className="w-fit rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-900">{archiveSourceLabel(item)}</span>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {item.memberNames.map((name) => {
                     const user = data.users.find((candidate) => candidate.name === name);
-                    return user ? <UserPill key={name} user={user} data={data} /> : <span key={name} className="rounded-full bg-white/65 px-3 py-1.5 text-sm font-black">{name}</span>;
+                    return user ? <UserPill key={name} user={user} data={data} /> : <span key={name} className="rounded-full bg-white/80 px-3 py-1.5 text-sm font-semibold text-neutral-900">{name}</span>;
                   })}
                 </div>
               </div>
@@ -283,13 +279,13 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
         </div>
       </Panel>
       {editingArchiveId && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4 backdrop-blur-sm" onMouseDown={(event) => {
+        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4-sm" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setEditingArchiveId("");
         }}>
-          <section className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-[1.75rem] border border-white/80 bg-card p-6 shadow-2xl dark:border-white/10">
+          <section className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-border bg-background p-6 shadow-2xl dark:border-border">
             <div className="mb-5 flex items-center justify-between gap-3">
-              <h3 className="text-xl font-black">곡 이력 수정</h3>
-              <button type="button" className="rounded-full bg-muted px-4 py-2 text-sm font-black" onClick={() => setEditingArchiveId("")}>닫기</button>
+              <h3 className="text-xl font-semibold">곡 이력 수정</h3>
+              <button type="button" className="rounded-full bg-muted px-4 py-2 text-sm font-semibold" onClick={() => setEditingArchiveId("")}>닫기</button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="공연명" value={archiveForm.performanceTitle} onChange={(value) => setArchiveForm({ ...archiveForm, performanceTitle: value })} />
@@ -297,13 +293,13 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
               <Field label="곡 시간 (선택, 분:초)" value={archiveForm.duration} onChange={(value) => setArchiveForm({ ...archiveForm, duration: value })} placeholder="예: 3:30" />
               <Select label="소속 팀" value={archiveForm.teamId} onChange={(value) => setArchiveForm({ ...archiveForm, teamId: value })} options={data.teams.map((team) => [team.id, team.name])} />
             </div>
-            <div className="mt-4 rounded-2xl bg-muted/55 p-4">
-              <p className="mb-3 text-sm font-black">참여 인원 / 팀장</p>
+            <div className="mt-4 rounded-xl bg-muted p-4">
+              <p className="mb-3 text-sm font-semibold">참여 인원 / 팀장</p>
               <div className="grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
                 {data.users.map((user) => {
                   const selected = archiveForm.memberNames.includes(user.name);
                   return (
-                    <div key={user.id} className="flex items-center justify-between gap-2 rounded-2xl bg-white/55 p-2 dark:bg-white/5">
+                    <div key={user.id} className="flex items-center justify-between gap-2 rounded-xl bg-background p-2">
                       <UserPill user={user} data={data} />
                       <div className="flex gap-2">
                         <SoftCheckbox checked={selected} label="참여" onToggle={() => setArchiveForm((form) => {
@@ -321,7 +317,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
               <PrimaryButton onClick={saveArchiveEdit}>수정 저장</PrimaryButton>
               <button
                 type="button"
-                className="rounded-2xl bg-primary/12 px-4 py-3 text-sm font-black text-primary transition hover:bg-primary/20"
+                className="rounded-xl bg-primary/12 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20"
                 onClick={() => {
                   const itemId = editingArchiveId;
                   setEditingArchiveId("");

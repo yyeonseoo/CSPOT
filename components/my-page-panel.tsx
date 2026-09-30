@@ -1,17 +1,17 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
-import { defaultBlue, isAppData } from "@/lib/schedule";
+import { normalizeData } from "@/lib/local-data";
+import { defaultAccent, isAppData } from "@/lib/schedule";
 import type { AppData, ClubUser } from "@/types/domain";
-import { ColorField, Field, Panel, PrimaryButton } from "@/components/ui";
+import { ColorField, Panel, PrimaryButton } from "@/components/ui";
 
-export function MyPagePanel({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
-  const [form, setForm] = useState({ username: currentUser.username, password: currentUser.password });
+export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   const [performanceColors, setPerformanceColors] = useState<Record<string, string>>(currentUser.performanceColors ?? {});
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function save() {
-    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, ...form, performanceColors, updatedAt: nowIso() } : user) });
+    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, performanceColors, updatedAt: nowIso() } : user) });
   }
 
   function exportBackup() {
@@ -47,7 +47,7 @@ export function MyPagePanel({ data, currentUser, persist }: { data: AppData; cur
           setBackupMessage("가져오기를 취소했습니다.");
           return;
         }
-        const normalizedData: AppData = { ...nextData, archiveSongs: nextData.archiveSongs ?? [] };
+        const normalizedData = normalizeData({ ...nextData, archiveSongs: nextData.archiveSongs ?? [] });
         persist(normalizedData);
         setPerformanceColors(normalizedData.users.find((user) => user.id === currentUser.id)?.performanceColors ?? {});
         setBackupMessage("백업 파일을 가져왔습니다.");
@@ -63,34 +63,26 @@ export function MyPagePanel({ data, currentUser, persist }: { data: AppData; cur
   return (
     <Panel title="마이페이지" className="max-w-2xl">
       <div className="space-y-4">
-        <Field label="아이디" value={form.username} onChange={(value) => setForm({ ...form, username: value })} />
-        <Field label="비밀번호" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} />
-        <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-          <div>
-            <p className="text-sm font-black">공연 색상</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">캘린더와 곡 카드에 표시할 공연별 색상입니다.</p>
-          </div>
+        <div className="space-y-3 rounded-xl bg-muted p-4">
+          <p className="text-sm font-semibold">공연 색상</p>
           {data.performances.length === 0 ? (
-            <p className="rounded-2xl bg-white/50 p-4 text-sm font-bold text-muted-foreground">아직 생성된 공연이 없습니다.</p>
+            <p className="rounded-xl bg-background p-4 text-sm font-medium text-muted-foreground">아직 생성된 공연이 없습니다.</p>
           ) : (
             data.performances.map((performance) => (
-              <ColorField key={performance.id} label={performance.title} value={performanceColors[performance.id] ?? defaultBlue} onChange={(value) => setPerformanceColors({ ...performanceColors, [performance.id]: value })} />
+              <ColorField key={performance.id} label={performance.title} value={performanceColors[performance.id] ?? defaultAccent} onChange={(value) => setPerformanceColors({ ...performanceColors, [performance.id]: value })} />
             ))
           )}
         </div>
         <PrimaryButton onClick={save}>저장</PrimaryButton>
-        <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-          <div>
-            <p className="text-sm font-black">로컬 데이터 백업</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">멤버, 공연, 곡, 일정, 공지 데이터를 JSON 파일로 저장하고 복구합니다.</p>
-          </div>
+        {adminMode && <div className="space-y-3 rounded-xl bg-muted p-4">
+          <p className="text-sm font-semibold">데이터 백업</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <button type="button" className="rounded-2xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-lg shadow-primary/20" onClick={exportBackup}>백업 내보내기</button>
-            <button type="button" className="rounded-2xl bg-white/75 px-4 py-3 text-sm font-black shadow-sm" onClick={() => fileInputRef.current?.click()}>백업 가져오기</button>
+            <button type="button" className="rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground" onClick={exportBackup}>백업 내보내기</button>
+            <button type="button" className="rounded-xl bg-background px-4 py-3 text-sm font-semibold shadow-sm" onClick={() => fileInputRef.current?.click()}>백업 가져오기</button>
           </div>
           <input ref={fileInputRef} className="hidden" type="file" accept="application/json,.json" onChange={(event) => importBackup(event.target.files?.[0] ?? null)} />
-          {backupMessage && <p className="text-xs font-bold text-muted-foreground">{backupMessage}</p>}
-        </div>
+          {backupMessage && <p className="text-xs font-medium text-muted-foreground">{backupMessage}</p>}
+        </div>}
       </div>
     </Panel>
   );

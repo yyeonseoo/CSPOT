@@ -1,110 +1,328 @@
-import { Check } from "lucide-react";
+import { ChevronLeft, Check, X } from "lucide-react";
 import { useState } from "react";
-import { formatDateTime, formatSongDuration, nowIso } from "@/lib/format";
+import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, toDateKey, today } from "@/lib/format";
 import { createAudit } from "@/lib/local-data";
-import { findPracticeConflicts, performanceColor } from "@/lib/schedule";
+import { candidateBlock, findPracticeConflicts, getSongUserIds, getSurveyTimes, slotKey, slotsCovering, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
-import type { AppData, ClubUser, PracticeCandidate, Schedule } from "@/types/domain";
-import { UserPill } from "@/components/items";
-import { Panel, PrimaryButton } from "@/components/ui";
+import type { AppData, AvailabilityResponse, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
+import { describeConflict, DayTimeline, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
+import { AvailabilityBreakdown, formatSlotDate, LocationField } from "@/components/slot-grid";
+import { Field, Panel, PrimaryButton, Select, SoftCheckbox } from "@/components/ui";
 
-export function SongManagementPanel({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
-  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
-  const pending = data.practiceCandidates.filter((candidate) => candidate.status === "PENDING");
-  const sortedPending = pending.slice().sort((a, b) => b.availableMemberCount - a.availableMemberCount || a.startsAt.localeCompare(b.startsAt));
-  const grouped = data.performances.map((performance) => ({ performance, songs: data.songs.filter((song) => song.performanceId === performance.id) })).filter((group) => group.songs.length > 0);
-  const selectedSong = data.songs.find((song) => song.id === selectedSongId) ?? null;
-  const selectedSongMembers = selectedSong
-    ? data.songMembers
-      .filter((member) => member.songId === selectedSong.id)
-      .map((member) => data.users.find((user) => user.id === member.userId))
-      .filter((user): user is ClubUser => Boolean(user))
-    : [];
-  const conflicts = findPracticeConflicts(pending, data);
+const hours = Array.from({ length: 25 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
+const statusLabels = { PENDING: "대기", APPROVED: "확정", REJECTED: "반려" };
 
-  function approveRequest(candidate: PracticeCandidate) {
-    const song = data.songs.find((item) => item.id === candidate.songId);
-    if (!song) return;
-    const updatedAt = nowIso();
-    const approved = { ...candidate, status: "APPROVED" as const, reviewedBy: currentUser.id, reviewedAt: updatedAt, updatedAt };
-    const schedule: Schedule = { id: uid("schedule"), type: "PRACTICE", title: candidate.title || `${song.title} 연습`, startsAt: candidate.startsAt, endsAt: candidate.endsAt, performanceId: song.performanceId, songId: song.id, visibility: "MEMBERS_ONLY", status: "CONFIRMED", createdBy: currentUser.id, createdAt: updatedAt, updatedAt };
-    persist({ ...data, practiceCandidates: data.practiceCandidates.map((item) => item.id === candidate.id ? approved : item), schedules: [...data.schedules, schedule], auditLogs: [...data.auditLogs, createAudit(currentUser, "APPROVE_SCHEDULE", "practiceCandidates", candidate.id, approved)] });
+type PanelProps = { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void };
+
+function approveRequests(data: AppData, currentUser: ClubUser, items: PracticeCandidate[]): AppData {
+  const updatedAt = nowIso();
+  const approved = items.map((item) => ({ ...item, status: "APPROVED" as const, reviewedBy: currentUser.id, reviewedAt: updatedAt, updatedAt }));
+  const byId = new Map(approved.map((item) => [item.id, item]));
+  const schedules: Schedule[] = approved.flatMap((item) => {
+    const song = data.songs.find((candidate) => candidate.id === item.songId);
+    return song ? [{ id: uid("schedule"), type: "PRACTICE", title: `${song.title} 연습`, startsAt: item.startsAt, endsAt: item.endsAt, location: item.location, performanceId: song.performanceId, songId: song.id, candidateId: item.id, visibility: "MEMBERS_ONLY", status: "CONFIRMED", createdBy: currentUser.id, createdAt: updatedAt, updatedAt }] : [];
+  });
+  return {
+    ...data,
+    practiceCandidates: data.practiceCandidates.map((item) => byId.get(item.id) ?? item),
+    schedules: [...data.schedules, ...schedules],
+    auditLogs: [...data.auditLogs, ...approved.map((item) => createAudit(currentUser, "APPROVE_SCHEDULE", "practiceCandidates", item.id, item))],
+  };
+}
+
+export function SongManagementPanel({ data, currentUser, persist }: PanelProps) {
+  const [surveyId, setSurveyId] = useState(data.surveys[data.surveys.length - 1]?.id ?? "");
+  const survey = data.surveys.find((item) => item.id === surveyId) ?? data.surveys[data.surveys.length - 1];
+  const [form, setForm] = useState({ title: "", startDate: today(), endDate: today(), timeStart: "18:00", timeEnd: "22:00", performanceIds: [] as string[] });
+  const [showForm, setShowForm] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const validForm = form.title.trim() !== "" && form.startDate <= form.endDate && form.timeStart < form.timeEnd && form.performanceIds.length > 0;
+  const requests = survey ? surveyRequests(survey, data) : [];
+  const conflictsById = new Map(requests.map((candidate) => [candidate.id, findPracticeConflicts(candidate, requests, data)]));
+  const selected = requests.find((candidate) => candidate.id === selectedId);
+  const requestsBySlot = new Map<string, PracticeCandidate[]>();
+  if (survey) {
+    for (const candidate of requests) {
+      const block = candidateBlock(candidate);
+      for (const time of slotsCovering(survey, block.start, block.end)) {
+        const key = slotKey(block.date, time);
+        requestsBySlot.set(key, [...(requestsBySlot.get(key) ?? []), candidate]);
+      }
+    }
+  }
+  const slotItems = selectedSlot ? requestsBySlot.get(selectedSlot) ?? [] : [];
+  const sheetOpen = Boolean(selected || selectedSlot);
+
+  function closeSheet() {
+    setSelectedId("");
+    setSelectedSlot("");
   }
 
-  return (
-    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="space-y-5">
-        {grouped.map(({ performance, songs }) => (
-          <Panel key={performance.id} title={performance.title}>
-            <div className="grid gap-3 md:grid-cols-2">
-              {songs.map((song) => {
-                const memberCount = data.songMembers.filter((member) => member.songId === song.id).length;
-                return (
-                <button key={song.id} className={cn("rounded-[1.2rem] border p-4 text-left", selectedSongId === song.id ? "border-primary bg-primary/10" : "border-white/80 bg-card/70 dark:border-white/10")} onClick={() => setSelectedSongId(selectedSongId === song.id ? null : song.id)}>
-                  <span className="mb-3 block h-2 w-12 rounded-full" style={{ backgroundColor: performanceColor(performance, currentUser) }} />
-                  <p className="font-black">{song.title}</p>
-                  <p className="text-sm text-muted-foreground">인원 {memberCount}명 · 대기 요청 {pending.filter((item) => item.songId === song.id).length}개{song.durationSeconds ? ` · ${formatSongDuration(song.durationSeconds)}` : ""}</p>
-                </button>
-                );
-              })}
-            </div>
-          </Panel>
+  function openSurvey() {
+    if (!validForm) return;
+    const createdAt = nowIso();
+    const next: ScheduleSurvey = { id: uid("survey"), createdBy: currentUser.id, ...form, title: form.title.trim(), slotMinutes: 30, status: "OPEN", createdAt, updatedAt: createdAt };
+    persist({ ...data, surveys: [...data.surveys, next], auditLogs: [...data.auditLogs, createAudit(currentUser, "OPEN_SURVEY", "surveys", next.id, next)] });
+    setSurveyId(next.id);
+    setShowForm(false);
+    setForm({ ...form, title: "", performanceIds: [] });
+    closeSheet();
+  }
+
+  // ponytail: 테스트용 더미 데이터. 관리자 화면 확인용이라 배포 전에 아래 버튼과 함께 삭제.
+  function fillDummyData() {
+    const createdAt = nowIso();
+    const weekLater = new Date();
+    weekLater.setDate(weekLater.getDate() + 6);
+    const target: ScheduleSurvey = survey ?? { id: uid("survey"), title: "테스트 조사", performanceIds: [], createdBy: currentUser.id, startDate: today(), endDate: toDateKey(weekLater), timeStart: "18:00", timeEnd: "23:00", slotMinutes: 30, status: "OPEN", createdAt, updatedAt: createdAt };
+    const dates = getDateRange(target.startDate, target.endDate);
+    const times = getSurveyTimes(target);
+    const pick = (max: number) => Math.floor(Math.random() * max);
+    const clampIndex = (index: number, length = 1) => Math.max(0, Math.min(times.length - length, index));
+    // 실제처럼 저녁 7시 전후로 몰리게 한다.
+    const evening = times.includes("19:00") ? times.indexOf("19:00") : Math.floor(times.length / 2);
+    // 팀원 응답: 35%는 그날 불가, 나머지는 저녁 시간 일부만 가능, 가끔 중간에 빠지는 시간이 있음
+    const targetSongIds = surveySongIds(target, data);
+    const dummySongs = data.songs.filter((song) => targetSongIds.includes(song.id) && data.teams.find((team) => team.id === song.teamId)?.name !== "랩");
+    const dummySongIds = new Set(dummySongs.map((song) => song.id));
+    const responses: AvailabilityResponse[] = Array.from(new Set(data.songMembers.filter((member) => dummySongIds.has(member.songId)).map((member) => member.userId))).map((userId) => ({
+      id: uid("availability"),
+      surveyId: target.id,
+      userId,
+      slots: dates.flatMap((date) => {
+        const busy = Math.random() < 0.35;
+        const from = clampIndex(evening - 2 + pick(4));
+        const to = from + 2 + pick(6);
+        const gap = Math.random() < 0.25 ? from + 1 + pick(3) : -1;
+        return times.map((time, index) => ({ date, time, available: !busy && index >= from && index < to && index !== gap }));
+      }),
+      submittedAt: createdAt,
+      updatedAt: createdAt,
+    }));
+    // 곡팀장 요청: 앞쪽 며칠의 저녁에 몰리고 대부분 수련관을 원해서 팀끼리 자주 겹친다.
+    const busyDates = dates.slice(0, Math.min(4, dates.length));
+    const dummyRequests: PracticeCandidate[] = dummySongs.flatMap((song) => {
+      const songDates = [...busyDates].sort(() => Math.random() - 0.5).slice(0, 2);
+      return songDates.map((date) => {
+        const length = Math.min(times.length, 3 + pick(2));
+        const start = times[clampIndex(evening - 1 + pick(3), length)];
+        const roll = Math.random();
+        const location = roll < 0.7 ? "수련관" : roll < 0.9 ? "외부 대관" : "학생회관 연습실";
+        return { id: uid("candidate"), performanceId: song.performanceId, songId: song.id, surveyId: target.id, proposedBy: song.leaderUserId, startsAt: makeLocalIso(date, start), endsAt: makeLocalIso(date, minutesToTime(timeToMinutes(start) + length * target.slotMinutes)), location, status: "PENDING" as const, createdAt, updatedAt: createdAt };
+      });
+    });
+    persist({
+      ...data,
+      surveys: survey ? data.surveys : [...data.surveys, target],
+      availabilityResponses: [...data.availabilityResponses.filter((response) => response.surveyId !== target.id), ...responses],
+      practiceCandidates: [...data.practiceCandidates.filter((candidate) => !(candidate.surveyId === target.id && candidate.status === "PENDING")), ...dummyRequests],
+    });
+    closeSheet();
+  }
+
+  function toggleSurvey() {
+    if (!survey) return;
+    persist({ ...data, surveys: data.surveys.map((item) => item.id === survey.id ? { ...item, status: item.status === "OPEN" ? "CLOSED" : "OPEN", updatedAt: nowIso() } : item) });
+  }
+
+  const requestCard = (candidate: PracticeCandidate) => {
+    const block = candidateBlock(candidate);
+    const conflicts = conflictsById.get(candidate.id) ?? [];
+    return (
+      <button key={candidate.id} type="button" className={cn("w-full rounded-xl border bg-background p-3 text-left", conflicts.length ? "border-orange-300" : "border-transparent")} onClick={() => setSelectedId(candidate.id)}>
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate font-semibold">{songTitleOf(data, candidate.songId)}</p>
+          <span className="flex shrink-0 gap-1">
+            <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", candidate.status === "APPROVED" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{statusLabels[candidate.status]}</span>
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">{formatSlotDate(block.date)} {block.start}~{block.end}, {candidate.location}</p>
+        {conflicts.map((conflict) => <p key={conflict.other.id} className="mt-1 text-xs font-medium text-orange-600">{describeConflict(data, candidate, conflict)}</p>)}
+      </button>
+    );
+  };
+
+  const surveyForm = (
+    <div className="space-y-2">
+      <Field label="조사 제목" value={form.title} placeholder="예: 515DAY 1주차 연습" onChange={(value) => setForm({ ...form, title: value })} />
+      <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+        <Field label="시작 날짜" type="date" value={form.startDate} onChange={(value) => setForm({ ...form, startDate: value })} />
+        <Field label="종료 날짜" type="date" value={form.endDate} onChange={(value) => setForm({ ...form, endDate: value })} />
+        <Select label="시작 시간" value={form.timeStart} onChange={(value) => setForm({ ...form, timeStart: value, timeEnd: form.timeEnd > value ? form.timeEnd : hours[hours.indexOf(value) + 1] })} options={hours.slice(0, 24).map((hour) => [hour, hour])} />
+        <Select label="종료 시간" value={form.timeEnd} onChange={(value) => setForm({ ...form, timeEnd: value })} options={hours.filter((hour) => hour > form.timeStart).map((hour) => [hour, hour])} />
+      </div>
+      <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setForm({ ...form, timeStart: "00:00", timeEnd: "24:00" })}>하루 전체</button>
+      <p className="pt-1 text-sm font-medium">조사 대상 공연</p>
+      <div className="flex flex-wrap gap-2">
+        {data.performances.length === 0 && <p className="text-sm text-muted-foreground">공연이 없습니다.</p>}
+        {data.performances.map((performance) => (
+          <SoftCheckbox
+            key={performance.id}
+            checked={form.performanceIds.includes(performance.id)}
+            label={`${performance.title} ${surveyUserIds({ performanceIds: [performance.id] }, data).length}명`}
+            onToggle={() => setForm({ ...form, performanceIds: form.performanceIds.includes(performance.id) ? form.performanceIds.filter((id) => id !== performance.id) : [...form.performanceIds, performance.id] })}
+          />
         ))}
-        {selectedSong && (
-          <Panel title={`${selectedSong.title} 참여 인원`}>
-            <p className="mb-4 text-sm font-bold text-muted-foreground">
-              팀장 {data.users.find((user) => user.id === selectedSong.leaderUserId)?.name ?? "미지정"}
-              {selectedSong.durationSeconds ? ` · 곡 시간 ${formatSongDuration(selectedSong.durationSeconds)}` : ""}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {selectedSongMembers.map((user) => <UserPill key={user.id} user={user} data={data} />)}
-              {selectedSongMembers.length === 0 && <p className="text-sm text-muted-foreground">등록된 참여 인원이 없습니다.</p>}
+      </div>
+      <PrimaryButton onClick={openSurvey} disabled={!validForm}>조사 열기</PrimaryButton>
+    </div>
+  );
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="min-w-0 space-y-4">
+        <Panel title="연습 일정 조사">
+          {survey ? (
+            <div className="space-y-2">
+              {data.surveys.length > 1 && (
+                <Select label="조사 선택" value={survey.id} onChange={(value) => { setSurveyId(value); closeSheet(); }} options={data.surveys.slice().reverse().map((item) => [item.id, surveyLabel(item)])} />
+              )}
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-muted p-3">
+                <p className="min-w-0 text-sm font-semibold">
+                  <span className={cn("mr-1.5 rounded-full px-2 py-0.5 text-xs", survey.status === "OPEN" ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20")}>{survey.status === "OPEN" ? "진행 중" : "마감"}</span>
+                  {survey.title}
+                  <span className="block text-xs text-muted-foreground">
+                    {survey.startDate.slice(5).replace("-", ".")}~{survey.endDate.slice(5).replace("-", ".")}, {survey.timeStart}~{survey.timeEnd}, 응답 {data.availabilityResponses.filter((response) => response.surveyId === survey.id).length}/{surveyUserIds(survey, data).length}명
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{survey.performanceIds.length ? data.performances.filter((performance) => survey.performanceIds.includes(performance.id)).map((performance) => performance.title).join(", ") : "전체 멤버"}</span>
+                </p>
+                <button type="button" className="shrink-0 rounded-xl bg-background px-3 py-2 text-sm font-semibold shadow-sm" onClick={toggleSurvey}>{survey.status === "OPEN" ? "마감" : "다시 열기"}</button>
+              </div>
+              <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setShowForm((value) => !value)}>{showForm ? "닫기" : "새 조사 열기"}</button>
+              {showForm && surveyForm}
             </div>
+          ) : surveyForm}
+          <button type="button" className="mt-2 w-full rounded-xl border border-dashed border-muted-foreground/40 px-4 py-2.5 text-sm font-medium text-muted-foreground" onClick={fillDummyData}>테스트: 더미 데이터 채우기</button>
+        </Panel>
+        {survey && (
+          <Panel title="팀별 희망 시간">
+            {requests.length === 0 ? (
+              <p className="text-sm text-muted-foreground">받은 요청이 없습니다.</p>
+            ) : (
+              <RequestGrid survey={survey} data={data} requests={requests} selectedSlot={selectedSlot} onSelectSlot={(key) => { setSelectedSlot(key); setSelectedId(""); }} />
+            )}
+          </Panel>
+        )}
+        {survey && requests.length > 0 && (
+          <Panel title="날짜별 보기">
+            <DayTimeline key={survey.id} survey={survey} data={data} requests={requests} selectedId={selectedId} onSelect={setSelectedId} />
           </Panel>
         )}
       </div>
-      <aside className="space-y-5">
-        <Panel title="전체 연습 요청">
-          <div className="space-y-3">
-            {sortedPending.length === 0 && <p className="text-sm text-muted-foreground">승인 대기 중인 연습 일정이 없습니다.</p>}
-            {sortedPending.map((request) => {
-              const song = data.songs.find((item) => item.id === request.songId);
-              const performance = data.performances.find((item) => item.id === song?.performanceId);
-              const selected = selectedSong?.id === request.songId;
-              return (
-              <div key={request.id} className={cn("rounded-[1.1rem] border p-3", selected ? "border-primary bg-primary/10" : "border-white/70 bg-muted/55 dark:border-white/10")}>
-                <p className="font-black">{request.title || "연습 요청"}</p>
-                <p className="text-sm text-muted-foreground">{performance?.title ?? "공연 없음"} · {song?.title ?? "곡 없음"}</p>
-                <p className="text-sm text-muted-foreground">{formatDateTime(request.startsAt)} - {formatDateTime(request.endsAt)} · 가능 {request.availableMemberCount}/{request.totalMemberCount}명</p>
-                {request.memo && <p className="mt-1 text-sm">{request.memo}</p>}
-                <PrimaryButton className="mt-3" onClick={() => approveRequest(request)}><Check size={16} />확정</PrimaryButton>
-              </div>
-              );
-            })}
-          </div>
-        </Panel>
-        <Panel title="충돌 정리">
-          <div className="space-y-3">
-            {conflicts.length === 0 && <p className="text-sm text-muted-foreground">타팀과 겹치는 대기 요청이 없습니다.</p>}
-            {conflicts.map((conflict) => (
-              <div key={`${conflict.first.id}-${conflict.second.id}`} className="rounded-[1.1rem] bg-muted/55 p-3 text-sm">
-                <p className="font-black">{formatDateTime(conflict.startsAt)} - {formatDateTime(conflict.endsAt)}</p>
-                <div className="mt-2 grid gap-2">
-                  {[conflict.first, conflict.second].map((item) => (
-                    <div key={item.id} className="rounded-2xl bg-white/55 p-3">
-                      <p className="font-black">{item.performanceTitle} · {item.songTitle}</p>
-                      <p className="text-muted-foreground">팀 {item.teamName} · 가능 {item.availableMemberCount}/{item.totalMemberCount}명</p>
-                    </div>
-                  ))}
-                </div>
-                <p className={cn("mt-2 rounded-xl px-3 py-2 font-bold", conflict.sharedMemberCount >= 2 ? "bg-destructive/10 text-destructive" : "bg-primary/15 text-primary")}>
-                  겹치는 인원 {conflict.sharedMemberCount}명 · {conflict.sharedMemberCount >= 2 ? "동시 확정 비추천" : "동시 확정 가능"}
-                </p>
-              </div>
-            ))}
-          </div>
+
+      {/* 모바일에서는 선택한 칸/요청을 아래에서 올라오는 시트로 보여준다. */}
+      {sheetOpen && <button type="button" aria-label="닫기" className="fixed inset-0 z-30 bg-black/30 xl:hidden" onClick={closeSheet} />}
+      <aside className={cn(sheetOpen ? "fixed inset-x-0 bottom-0 z-40 max-h-[85dvh] overflow-y-auto rounded-t-2xl xl:static xl:max-h-none xl:overflow-visible" : "hidden xl:block")}>
+        <Panel
+          title={selected ? "확정하기" : selectedSlot ? `${formatSlotDate(selectedSlot.split("_")[0])} ${selectedSlot.split("_")[1]}` : "확정하기"}
+          className="rounded-b-none xl:rounded-b-2xl"
+        >
+          {sheetOpen && <button type="button" aria-label="닫기" className="absolute right-4 top-4 rounded-full bg-muted p-2" onClick={closeSheet}><X size={18} /></button>}
+          {survey && selected ? (
+            <>
+              {selectedSlot && (
+                <button type="button" className="mb-3 flex items-center gap-1 text-sm font-medium text-muted-foreground" onClick={() => setSelectedId("")}>
+                  <ChevronLeft size={16} />목록
+                </button>
+              )}
+              <RequestReview key={selected.id} request={selected} requests={requests} survey={survey} data={data} currentUser={currentUser} persist={persist} />
+            </>
+          ) : selectedSlot ? (
+            <div className="space-y-2">{slotItems.map(requestCard)}</div>
+          ) : (
+            <p className="text-sm text-muted-foreground">표의 칸이나 요청을 선택하세요.</p>
+          )}
         </Panel>
       </aside>
     </section>
+  );
+}
+
+function RequestReview({ request, requests, survey, data, currentUser, persist }: PanelProps & { request: PracticeCandidate; requests: PracticeCandidate[]; survey: ScheduleSurvey }) {
+  const song = data.songs.find((item) => item.id === request.songId);
+  // 여러 팀이 한 시간대를 나눠 쓸 수 있게 10분 단위로 조정한다.
+  const startOptions = timesBetween(survey.timeStart, survey.timeEnd, 10);
+  const [edit, setEdit] = useState(() => ({ ...candidateBlock(request), location: request.location }));
+  const endOptions = [...startOptions.filter((time) => time > edit.start), survey.timeEnd].filter((time, index, values) => values.indexOf(time) === index);
+  const durationMinutes = timeToMinutes(edit.end) - timeToMinutes(edit.start);
+  const memberIds = getSongUserIds(request.songId, data);
+  const pending = request.status === "PENDING";
+  const valid = edit.start < edit.end;
+  const startsAt = makeLocalIso(edit.date, edit.start);
+  const endsAt = makeLocalIso(edit.date, edit.end);
+  const location = edit.location.trim() || "기타";
+  // 관리자가 시간·장소를 고치면 그 기준으로 다시 충돌을 본다.
+  const target = { ...request, startsAt, endsAt, location };
+  const conflicts = findPracticeConflicts(target, requests, data);
+  // 이걸 확정하면 겹치는 다른 팀에 남는 연습(확정 + 이 시간과 안 겹치는 후보) 수
+  const remainingFor = (songId: string) => requests.filter((item) => item.songId === songId && (item.status === "APPROVED" || findPracticeConflicts(target, [item], data).length === 0)).length;
+
+  function review(status: "APPROVED" | "REJECTED") {
+    if (!song) return;
+    if (status === "APPROVED" && conflicts.some((conflict) => conflict.other.status === "APPROVED") && !window.confirm("이미 확정된 연습과 겹칩니다. 그래도 확정할까요?")) return;
+    if (status === "APPROVED") {
+      persist(approveRequests(data, currentUser, [{ ...request, startsAt, endsAt, location }]));
+      return;
+    }
+    const updatedAt = nowIso();
+    const rejected: PracticeCandidate = { ...request, status, reviewedBy: currentUser.id, reviewedAt: updatedAt, updatedAt };
+    persist({
+      ...data,
+      practiceCandidates: data.practiceCandidates.map((item) => item.id === request.id ? rejected : item),
+      auditLogs: [...data.auditLogs, createAudit(currentUser, "REJECT_SCHEDULE", "practiceCandidates", request.id, rejected)],
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-lg font-semibold">{song?.title ?? "삭제된 곡"}</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          {data.performances.find((performance) => performance.id === request.performanceId)?.title ?? "공연 없음"}, 팀장 {data.users.find((user) => user.id === song?.leaderUserId)?.name ?? "미지정"}
+        </p>
+      </div>
+      {pending ? (
+        <>
+          <Select label="날짜" value={edit.date} onChange={(date) => setEdit({ ...edit, date })} options={getDateRange(survey.startDate, survey.endDate).map((date) => [date, formatSlotDate(date)])} />
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              label="시작"
+              value={edit.start}
+              onChange={(start) => setEdit({ ...edit, start, end: edit.end > start ? edit.end : minutesToTime(Math.min(timeToMinutes(survey.timeEnd), timeToMinutes(start) + 60)) })}
+              options={startOptions.map((time) => [time, time])}
+            />
+            <Select label="종료" value={edit.end} onChange={(end) => setEdit({ ...edit, end })} options={endOptions.map((time) => [time, time])} />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">연습 {Math.floor(durationMinutes / 60) ? `${Math.floor(durationMinutes / 60)}시간 ` : ""}{durationMinutes % 60 ? `${durationMinutes % 60}분` : ""}</p>
+          <LocationField value={edit.location} onChange={(value) => setEdit({ ...edit, location: value })} />
+        </>
+      ) : (
+        <p className="rounded-xl bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">확정됨: {formatSlotDate(edit.date)} {edit.start}~{edit.end}, {request.location}</p>
+      )}
+      {conflicts.length > 0 && (
+        <div className="space-y-1 rounded-xl bg-orange-50 p-3 text-sm dark:bg-orange-500/10">
+          <p className="font-semibold text-orange-700 dark:text-orange-300">겹치는 요청 {conflicts.length}건</p>
+          {conflicts.map((conflict) => {
+            const remaining = conflict.other.status === "PENDING" ? remainingFor(conflict.other.songId) : null;
+            return (
+              <p key={conflict.other.id} className="text-orange-700 dark:text-orange-300">
+                {describeConflict(data, target, conflict)}
+                {remaining !== null && (remaining === 0
+                  ? <span className="block font-semibold text-red-600">확정하면 이 팀은 연습 0회</span>
+                  : <span className="block font-medium">확정해도 다른 후보 {remaining}건</span>)}
+              </p>
+            );
+          })}
+        </div>
+      )}
+      <AvailabilityBreakdown survey={survey} data={data} memberIds={memberIds} date={edit.date} times={slotsCovering(survey, edit.start, edit.end)} />
+      {pending && (
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive" onClick={() => review("REJECTED")}>반려</button>
+          <PrimaryButton onClick={() => review("APPROVED")} disabled={!valid} icon={<Check size={16} />}>확정</PrimaryButton>
+        </div>
+      )}
+    </div>
   );
 }

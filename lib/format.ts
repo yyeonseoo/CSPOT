@@ -2,10 +2,10 @@
 
 export const nowIso = () => new Date().toISOString();
 
-export const today = () => new Date().toISOString().slice(0, 10);
+export const today = () => toDateKey(new Date());
 
 export function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
 
 export function toDatetimeLocal(value: string) {
@@ -62,7 +62,7 @@ export function getDateRange(startDate: string, endDate: string) {
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T00:00:00`);
   for (const date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-    dates.push(date.toISOString().slice(0, 10));
+    dates.push(toDateKey(date));
   }
   return dates;
 }
@@ -80,4 +80,21 @@ export function minutesToTime(minutes: number) {
 
 export function makeLocalIso(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString();
+}
+
+// 학기 키: "2026-1" = 26년 1학기. 1학기 3~8월, 2학기 9~2월.
+export function currentTerm(date = new Date()) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  return month >= 9 ? `${year}-2` : month >= 3 ? `${year}-1` : `${year - 1}-2`;
+}
+
+export function previousTerm(term: string) {
+  const [year, semester] = term.split("-").map(Number);
+  return semester === 2 ? `${year}-1` : `${year - 1}-2`;
+}
+
+export function termLabel(term: string) {
+  const [year, semester] = term.split("-");
+  return `${year.slice(2)}년 ${semester}학기`;
 }

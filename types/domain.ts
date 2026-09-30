@@ -20,7 +20,8 @@ export type ClubUser = {
   teamId: string | null;
   teamColor: string;
   performanceColors?: Record<string, string>;
-  activeYears?: number[];
+  // "2026-1" = 26년 1학기
+  activeTerms?: string[];
   role: Role;
   mustChangePassword: boolean;
   status: UserStatus;
@@ -100,8 +101,11 @@ export type Schedule = {
   startsAt: string;
   endsAt: string;
   color?: string;
+  location?: string;
   performanceId?: string;
   songId?: string;
+  // 연습 요청을 확정해서 만든 일정이면 그 요청 id
+  candidateId?: string;
   ownerUserId?: string;
   visibility: ScheduleVisibility;
   status: "CONFIRMED" | "CANCELED";
@@ -112,10 +116,10 @@ export type Schedule = {
 
 export type ScheduleSurvey = {
   id: string;
-  performanceId: string;
-  songId: string;
-  createdBy: string;
   title: string;
+  // 조사 대상 공연. 비어 있으면(예전 조사) 전체 멤버 대상.
+  performanceIds: string[];
+  createdBy: string;
   startDate: string;
   endDate: string;
   timeStart: string;
@@ -135,29 +139,15 @@ export type AvailabilityResponse = {
   updatedAt: string;
 };
 
-export type AmbiguousTime = {
-  id: string;
-  surveyId: string;
-  userId: string;
-  date: string;
-  timeStart: string;
-  timeEnd: string;
-  memo?: string;
-  createdAt: string;
-};
-
 export type PracticeCandidate = {
   id: string;
   performanceId: string;
   songId: string;
-  surveyId?: string;
+  surveyId: string;
   proposedBy: string;
   startsAt: string;
   endsAt: string;
-  availableMemberCount: number;
-  totalMemberCount: number;
-  memo?: string;
-  title?: string;
+  location: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   reviewedBy?: string;
   reviewedAt?: string;
@@ -200,7 +190,6 @@ export type AppData = {
   schedules: Schedule[];
   surveys: ScheduleSurvey[];
   availabilityResponses: AvailabilityResponse[];
-  ambiguousTimes: AmbiguousTime[];
   practiceCandidates: PracticeCandidate[];
   notices: Notice[];
   auditLogs: AuditLog[];

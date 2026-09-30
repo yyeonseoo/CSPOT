@@ -19,7 +19,7 @@ export function NoticePanel({ data, currentUser, persist, admin = false }: { dat
 
   return (
     <TwoColumn>
-      {admin && <Panel title="공지 작성"><div className="space-y-3"><Field label="제목" value={form.title} onChange={(value) => setForm({ ...form, title: value })} /><TextArea label="내용" value={form.content} onChange={(value) => setForm({ ...form, content: value })} /><label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} /> 고정</label><PrimaryButton onClick={addNotice}>작성</PrimaryButton></div></Panel>}
+      {admin && <Panel title="공지 작성"><div className="space-y-3"><Field label="제목" value={form.title} onChange={(value) => setForm({ ...form, title: value })} /><TextArea label="내용" value={form.content} onChange={(value) => setForm({ ...form, content: value })} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} /> 고정</label><PrimaryButton onClick={addNotice}>작성</PrimaryButton></div></Panel>}
       <DataList title="공지" items={visibleNotices.map((notice) => ({ id: notice.id, title: notice.pinned ? `[고정] ${notice.title}` : notice.title, meta: notice.content }))} />
     </TwoColumn>
   );

@@ -1,7 +1,7 @@
 import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatDateTime, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, today } from "@/lib/format";
-import { createAudit } from "@/lib/local-data";
+import { currentTerm, formatDateTime, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
+import { createAudit, fixSongLeaders } from "@/lib/local-data";
 import { alpha, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
@@ -11,6 +11,10 @@ import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, TextAr
 export function PerformanceManager({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = data.performances.find((item) => item.id === selectedId) ?? null;
+  const detailRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedId) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedId]);
   const [perf, setPerf] = useState({ title: "", startsAt: `${today()}T19:00`, endsAt: `${today()}T21:00`, location: "" });
 
   function addPerformance() {
@@ -49,8 +53,8 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
 
   return (
     <section className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
-        <Panel title="공연 만들기">
+      <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+        <Panel title="공연 만들기" className="order-2 xl:order-none">
           <div className="space-y-3">
             <Field label="공연명" value={perf.title} onChange={(value) => setPerf({ ...perf, title: value })} />
             <Field label="시작" type="datetime-local" value={perf.startsAt} onChange={(value) => setPerf({ ...perf, startsAt: value })} />
@@ -59,19 +63,20 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
             <PrimaryButton onClick={addPerformance}>생성</PrimaryButton>
           </div>
         </Panel>
-        <Panel title="공연 목록">
+        <Panel title="공연 목록" className="order-1 xl:order-none">
           <div className="grid gap-3 md:grid-cols-2">
             {data.performances.map((performance) => (
-              <button key={performance.id} className={cn("rounded-[1.2rem] border p-4 text-left transition hover:-translate-y-0.5", selected?.id === performance.id ? "border-primary bg-primary/10" : "border-white/80 bg-card/70 dark:border-white/10")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
-                <span className="mb-3 block h-2 w-12 rounded-full" style={{ backgroundColor: performance.color }} />
-                <p className="font-black">{performance.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
+              <button key={performance.id} style={{ backgroundColor: performance.color }} className={cn("rounded-2xl p-4 text-left text-neutral-900 transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
+                <p className="font-semibold">{performance.title}</p>
+                <p className="mt-1 text-sm text-neutral-700">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
               </button>
             ))}
           </div>
         </Panel>
       </div>
-      {selected && <PerformanceDetail data={data} currentUser={currentUser} performance={selected} persist={persist} />}
+      <div ref={detailRef} className="scroll-mt-20">
+        {selected && <PerformanceDetail key={selected.id} data={data} currentUser={currentUser} performance={selected} persist={persist} />}
+      </div>
     </section>
   );
 }
@@ -97,17 +102,21 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   const [editingMembers, setEditingMembers] = useState(false);
   const [draftMemberIds, setDraftMemberIds] = useState<string[]>(performanceMemberIds);
   const [performanceMemberSearch, setPerformanceMemberSearch] = useState("");
+  const knownTerms = Array.from(new Set(data.users.flatMap((user) => user.activeTerms ?? []))).sort();
+  const defaultTerm = knownTerms.includes(currentTerm()) ? currentTerm() : knownTerms[knownTerms.length - 1] ?? currentTerm();
+  const [memberTerm, setMemberTerm] = useState(defaultTerm);
   const [songMemberTeamFilter, setSongMemberTeamFilter] = useState("all");
   const [songMemberSearch, setSongMemberSearch] = useState("");
   const initializedPerformanceId = useRef("");
   const filteredPerformanceUsers = useMemo(() => {
     const keyword = performanceMemberSearch.trim().toLowerCase();
-    if (!keyword) return data.users;
     return data.users.filter((user) => {
+      // 이미 고른 사람은 학기와 상관없이 보여준다.
+      const inTerm = memberTerm === "all" || (user.activeTerms ?? []).includes(memberTerm) || draftMemberIds.includes(user.id);
       const team = data.teams.find((item) => item.id === user.teamId);
-      return user.name.toLowerCase().includes(keyword) || user.username.toLowerCase().includes(keyword) || (team?.name ?? "").toLowerCase().includes(keyword);
+      return inTerm && (!keyword || user.name.toLowerCase().includes(keyword) || (team?.name ?? "").toLowerCase().includes(keyword));
     });
-  }, [data.teams, data.users, performanceMemberSearch]);
+  }, [data.teams, data.users, performanceMemberSearch, memberTerm, draftMemberIds]);
   const filteredSongMembers = useMemo(() => {
     const keyword = songMemberSearch.trim().toLowerCase();
     return performanceMembers.filter((user) => {
@@ -253,7 +262,12 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   }
 
   function savePerformanceMembers() {
-    updatePerformance({ memberIds: draftMemberIds });
+    const songIds = new Set(songs.map((song) => song.id));
+    persist(fixSongLeaders({
+      ...data,
+      performances: data.performances.map((item) => item.id === performance.id ? { ...item, memberIds: draftMemberIds, updatedAt: nowIso() } : item),
+      songMembers: data.songMembers.filter((member) => !songIds.has(member.songId) || draftMemberIds.includes(member.userId)),
+    }));
     setEditingMembers(false);
   }
 
@@ -266,9 +280,9 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   }
 
   function addSong() {
-    if (!songTitle.trim() || songMemberIds.length === 0) return;
+    const leaderUserId = leaderIds[0];
+    if (!songTitle.trim() || songMemberIds.length === 0 || !leaderUserId) return;
     const createdAt = nowIso();
-    const leaderUserId = leaderIds[0] ?? songMemberIds[0];
     const song: Song = { id: uid("song"), performanceId: performance.id, teamId: songTeamId, title: songTitle, durationSeconds: parseSongDuration(songDuration), leaderUserId, requiredPracticeCount: 0, estimatedPracticeMinutes: 120, order: data.songs.length + 1, status: "ACTIVE", createdAt, updatedAt: createdAt };
     const memberships: SongMember[] = songMemberIds.map((userId) => ({ id: uid("member"), performanceId: performance.id, songId: song.id, userId, joinedAt: createdAt }));
     persist({ ...data, songs: [...data.songs, song], songMembers: [...data.songMembers, ...memberships], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_SONG", "songs", song.id, song)] });
@@ -302,16 +316,13 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   function deleteSong(songId: string) {
     const target = data.songs.find((song) => song.id === songId);
     if (!target) return;
-    const ok = window.confirm(`${target.title} 곡을 삭제할까요? 관련 조사, 후보, 일정도 함께 삭제됩니다.`);
+    const ok = window.confirm(`${target.title} 곡을 삭제할까요? 관련 연습 요청과 일정도 함께 삭제됩니다.`);
     if (!ok) return;
     persist({
       ...data,
       performances: data.performances.map((item) => item.id === performance.id ? { ...item, runtimeBreaks: (item.runtimeBreaks ?? []).filter((runtimeBreak) => runtimeBreak.afterSongId !== songId), updatedAt: nowIso() } : item),
       songs: data.songs.filter((song) => song.id !== songId),
       songMembers: data.songMembers.filter((member) => member.songId !== songId),
-      surveys: data.surveys.filter((survey) => survey.songId !== songId),
-      availabilityResponses: data.availabilityResponses.filter((response) => !data.surveys.some((survey) => survey.songId === songId && survey.id === response.surveyId)),
-      ambiguousTimes: data.ambiguousTimes.filter((time) => !data.surveys.some((survey) => survey.songId === songId && survey.id === time.surveyId)),
       practiceCandidates: data.practiceCandidates.filter((candidate) => candidate.songId !== songId),
       schedules: data.schedules.filter((schedule) => schedule.songId !== songId),
       auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_SONG", "songs", songId, target)],
@@ -320,13 +331,13 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   }
 
   return (
-    <Panel title={`${performance.title} 상세`}>
-      <div className="mb-5 rounded-[1.25rem] bg-muted/50 p-4">
-        <p className="mb-2 text-sm font-black">공연 설명 / 운영 메모</p>
-        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{performance.description || "아직 저장된 설명이 없습니다. 오른쪽 상세 공지 영역에서 설명을 저장할 수 있습니다."}</p>
+    <Panel title={`${performance.title} 상세`} className="p-2.5 sm:p-6">
+      <div className="mb-5 rounded-2xl bg-muted p-4">
+        <p className="mb-2 text-sm font-semibold">공연 설명 / 운영 메모</p>
+        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{performance.description || "설명 없음"}</p>
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
-        <Panel title="공연 참여 인원" className="shadow-none">
+        <Panel title="공연 참여 인원" className="p-3 shadow-none sm:p-6">
           {!editingMembers ? (
             <div className="space-y-4">
               <div className="flex min-h-24 flex-wrap content-start gap-2">
@@ -338,34 +349,41 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           ) : (
             <div className="space-y-4">
               <input
-                className="w-full rounded-2xl border border-white/80 bg-white/70 px-4 py-3 text-sm font-bold outline-none transition placeholder:text-muted-foreground/70 focus:ring-4 focus:ring-primary/15"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
                 value={performanceMemberSearch}
                 onChange={(event) => setPerformanceMemberSearch(event.target.value)}
-                placeholder="이름, 아이디, 팀으로 검색"
+                placeholder="이름이나 팀으로 검색"
               />
+              <div className="flex flex-wrap gap-2">
+                {[...knownTerms, "all"].map((term) => (
+                  <button key={term} type="button" className={cn("rounded-full px-3 py-1.5 text-xs font-semibold", memberTerm === term ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground")} onClick={() => setMemberTerm(term)}>
+                    {term === "all" ? "전체" : termLabel(term)}
+                  </button>
+                ))}
+              </div>
               <div className="grid max-h-80 gap-2 overflow-auto">
                 {filteredPerformanceUsers.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between gap-3 rounded-2xl px-3 py-2 text-sm font-semibold" style={{ backgroundColor: alpha(teamColor(data.teams.find((team) => team.id === user.teamId)), "2E") }}>
+                  <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold" style={{ backgroundColor: alpha(teamColor(data.teams.find((team) => team.id === user.teamId)), "2E") }}>
                     <UserPill user={user} data={data} />
                     <SoftCheckbox checked={draftMemberIds.includes(user.id)} label="선택" onToggle={() => togglePerformanceMember(user.id)} />
                   </div>
                 ))}
-                {filteredPerformanceUsers.length === 0 && <p className="rounded-2xl bg-white/50 p-4 text-sm font-bold text-muted-foreground">검색 결과가 없습니다.</p>}
+                {filteredPerformanceUsers.length === 0 && <p className="rounded-xl bg-background p-4 text-sm font-medium text-muted-foreground">검색 결과가 없습니다.</p>}
               </div>
               <PrimaryButton onClick={savePerformanceMembers}>저장하기</PrimaryButton>
-              <button className="w-full rounded-2xl bg-muted/70 px-4 py-3 text-sm font-bold" onClick={() => setEditingMembers(false)}>닫기</button>
+              <button className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setEditingMembers(false)}>닫기</button>
             </div>
           )}
         </Panel>
-        <Panel title="공연 곡 생성" className="shadow-none">
+        <Panel title="곡 팀 만들기" className="p-3 shadow-none sm:p-6">
           <div className="space-y-3">
             <Select label="소속 팀" value={songTeamId} onChange={setSongTeamId} options={data.teams.map((team) => [team.id, team.name])} />
             <Field label="곡 / 무대 이름" value={songTitle} onChange={setSongTitle} />
             <Field label="곡 시간 (선택, 분:초)" value={songDuration} onChange={setSongDuration} placeholder="예: 3:30" />
-            <div className="rounded-2xl bg-muted/50 p-3">
-              <p className="mb-3 text-sm font-black">곡 참여 인원 / 팀장</p>
+            <div className="rounded-xl bg-muted p-3">
+              <p className="mb-3 text-sm font-semibold">팀원 / 곡팀장</p>
               <input
-                className="mb-3 w-full rounded-2xl border border-white/80 bg-white/70 px-4 py-3 text-sm font-bold outline-none transition placeholder:text-muted-foreground/70 focus:ring-4 focus:ring-primary/15"
+                className="mb-3 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
                 value={songMemberSearch}
                 onChange={(event) => setSongMemberSearch(event.target.value)}
                 placeholder="이름이나 아이디로 검색"
@@ -373,7 +391,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className={cn("rounded-full px-3 py-2 text-xs font-black transition", songMemberTeamFilter === "all" ? "bg-primary text-white shadow-sm" : "bg-white/65 text-muted-foreground")}
+                  className={cn("rounded-full px-3 py-2 text-xs font-semibold transition", songMemberTeamFilter === "all" ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground")}
                   onClick={() => setSongMemberTeamFilter("all")}
                 >
                   전체
@@ -382,7 +400,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   <button
                     type="button"
                     key={team.id}
-                    className={cn("rounded-full px-3 py-2 text-xs font-black transition", songMemberTeamFilter === team.id ? "text-white shadow-sm" : "text-foreground")}
+                    className={cn("rounded-full px-3 py-2 text-xs font-semibold transition", songMemberTeamFilter === team.id ? "text-white shadow-sm" : "text-foreground")}
                     style={{ backgroundColor: songMemberTeamFilter === team.id ? teamColor(team) : alpha(teamColor(team), "35") }}
                     onClick={() => setSongMemberTeamFilter(team.id)}
                   >
@@ -392,19 +410,27 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               </div>
               <div className="grid max-h-44 gap-2 overflow-auto">
                 {filteredSongMembers.map((user) => (
-                  <div key={user.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-2xl bg-white/45 p-2 text-sm">
+                  <div key={user.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl bg-background p-2 text-sm">
                     <UserPill user={user} data={data} />
                     <SoftCheckbox checked={songMemberIds.includes(user.id)} label="참여" onToggle={() => setSongMemberIds((prev) => prev.includes(user.id) ? prev.filter((id) => id !== user.id) : [...prev, user.id])} />
-                    <SoftCheckbox checked={leaderIds.includes(user.id)} label="팀장" onToggle={() => setLeaderIds((prev) => prev.includes(user.id) ? prev.filter((id) => id !== user.id) : [...prev, user.id])} />
+                    <SoftCheckbox
+                      checked={leaderIds.includes(user.id)}
+                      label="곡팀장"
+                      onToggle={() => {
+                        // 곡팀장은 한 명. 고르면 팀원에도 자동으로 들어간다.
+                        setLeaderIds((prev) => prev.includes(user.id) ? [] : [user.id]);
+                        setSongMemberIds((prev) => prev.includes(user.id) ? prev : [...prev, user.id]);
+                      }}
+                    />
                   </div>
                 ))}
-                {filteredSongMembers.length === 0 && <p className="rounded-2xl bg-white/50 p-4 text-sm font-bold text-muted-foreground">조건에 맞는 참여 인원이 없습니다.</p>}
+                {filteredSongMembers.length === 0 && <p className="rounded-xl bg-background p-4 text-sm font-medium text-muted-foreground">{performanceMembers.length === 0 ? "먼저 공연 참여 인원을 등록하세요." : "조건에 맞는 인원이 없습니다."}</p>}
               </div>
             </div>
-            <PrimaryButton onClick={addSong}>곡 생성</PrimaryButton>
+            <PrimaryButton onClick={addSong} disabled={!songTitle.trim() || songMemberIds.length === 0 || leaderIds.length === 0}>곡 팀 만들기</PrimaryButton>
           </div>
         </Panel>
-        <Panel title="공연 상세 공지" className="shadow-none">
+        <Panel title="공연 상세 공지" className="p-3 shadow-none sm:p-6">
           <div className="space-y-3">
             <TextArea label="공연 설명 / 운영 메모" value={description} onChange={setDescription} />
             <PrimaryButton onClick={() => updatePerformance({ description })}>설명 저장</PrimaryButton>
@@ -413,33 +439,33 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           </div>
         </Panel>
       </div>
-      <Panel title="생성된 공연 곡" className="mt-5 shadow-none">
-        <div className="mb-5 flex flex-col gap-4 rounded-3xl border border-primary/15 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <Panel title="생성된 공연 곡" className="mt-5 p-3 shadow-none sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Clock3 size={20} />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-black text-primary">선택 곡 러닝타임</p>
-              <p className="mt-0.5 text-xs font-bold text-muted-foreground">
-                {selectedRuntimeSongs.length > 0 ? `${selectedRuntimeSongs.length}/${songs.length}곡 선택` : "아래 곡 카드를 선택해주세요"}
+              <p className="text-sm font-semibold text-primary">선택 곡 러닝타임</p>
+              <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+                {selectedRuntimeSongs.length > 0 ? `${selectedRuntimeSongs.length}/${songs.length}곡 선택` : "곡 카드를 눌러 선택"}
                 {missingRuntimeCount > 0 ? ` · 시간 미입력 ${missingRuntimeCount}곡 제외` : ""}
               </p>
               {selectedRuntimeSongs.length > 0 && (
-                <p className="mt-1 text-xs font-bold text-muted-foreground">
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
                   곡 {formatTotalDuration(songRuntimeSeconds)} · 입퇴장 {formatTotalDuration(transitionRuntimeSeconds)} · 쉬는시간 {formatTotalDuration(runtimeParts.breakSeconds)}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <div className="flex rounded-2xl bg-white/65 p-1 dark:bg-white/5">
-              <button type="button" className="rounded-xl px-3 py-2 text-xs font-black text-muted-foreground transition hover:bg-white/80" onClick={() => setSelectedRuntimeSongIds(orderedSongs.map((song) => song.id))}>전체</button>
-              <button type="button" className="rounded-xl px-3 py-2 text-xs font-black text-muted-foreground transition hover:bg-white/80" onClick={() => setSelectedRuntimeSongIds([])}>해제</button>
+          <div className="flex items-center gap-2 sm:justify-end">
+            <div className="flex shrink-0 rounded-xl bg-background p-1">
+              <button type="button" className="whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-background" onClick={() => setSelectedRuntimeSongIds(orderedSongs.map((song) => song.id))}>전체</button>
+              <button type="button" className="whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-background" onClick={() => setSelectedRuntimeSongIds([])}>해제</button>
             </div>
             <button
               type="button"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/70 text-primary shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-35 dark:bg-white/5"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background text-primary shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-35"
               disabled={selectedRuntimeSongs.length === 0}
               onClick={exportSelectedSetlist}
               aria-label="선택 곡 셋리스트 엑셀 내보내기"
@@ -447,17 +473,17 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             >
               <Download size={18} />
             </button>
-            <p className="whitespace-nowrap text-xl font-black tabular-nums">{formatTotalDuration(selectedRuntimeSeconds)}</p>
+            <p className="ml-auto whitespace-nowrap text-lg font-semibold tabular-nums sm:text-xl">{formatTotalDuration(selectedRuntimeSeconds)}</p>
           </div>
         </div>
-        <div className="mb-5 grid gap-3 rounded-3xl bg-muted/45 p-4 lg:grid-cols-[minmax(220px,0.75fr)_minmax(0,1.5fr)]">
-          <div className="rounded-2xl bg-white/55 p-4 dark:bg-white/5">
-            <p className="mb-3 text-sm font-black">곡 사이 입퇴장</p>
+        <div className="mb-4 grid gap-2 rounded-2xl bg-muted p-2 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(220px,0.75fr)_minmax(0,1.5fr)]">
+          <div className="rounded-xl bg-background p-3 sm:p-4">
+            <p className="mb-3 text-sm font-semibold">곡 사이 입퇴장</p>
             <div className="flex items-end gap-2">
-              <label className="min-w-0 flex-1 text-xs font-black text-muted-foreground">
+              <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">
                 시간(초)
                 <input
-                  className="mt-1 w-full rounded-xl border border-white/80 bg-white/75 px-3 py-2.5 text-base font-black text-foreground outline-none focus:ring-4 focus:ring-primary/15 dark:border-white/10 dark:bg-white/5"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30 dark:border-border"
                   type="number"
                   min="0"
                   inputMode="numeric"
@@ -465,17 +491,17 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   onChange={(event) => setTransitionInput(event.target.value)}
                 />
               </label>
-              <button type="button" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground" onClick={saveTransitionSeconds}>저장</button>
+              <button type="button" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground" onClick={saveTransitionSeconds}>저장</button>
             </div>
           </div>
-          <div className="rounded-2xl bg-white/55 p-4 dark:bg-white/5">
-            <p className="mb-3 text-sm font-black">쉬는시간</p>
+          <div className="rounded-xl bg-background p-3 sm:p-4">
+            <p className="mb-3 text-sm font-semibold">쉬는시간</p>
             {orderedSongs.length > 1 ? (
               <>
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto] sm:items-end">
                   <Select label="이 곡 뒤" value={breakAfterSongId || orderedSongs[0]?.id || ""} onChange={setBreakAfterSongId} options={orderedSongs.slice(0, -1).map((song) => [song.id, song.title])} />
                   <Field label="시간" value={breakDuration} onChange={setBreakDuration} placeholder="10:00" />
-                  <button type="button" className="rounded-xl bg-primary px-4 py-4 text-sm font-black text-primary-foreground" onClick={saveRuntimeBreak}>추가</button>
+                  <button type="button" className="rounded-xl bg-primary px-4 py-4 text-sm font-semibold text-primary-foreground" onClick={saveRuntimeBreak}>추가</button>
                 </div>
                 {runtimeBreaks.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -483,7 +509,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       const song = songs.find((item) => item.id === runtimeBreak.afterSongId);
                       if (!song) return null;
                       return (
-                        <button key={runtimeBreak.afterSongId} type="button" className="inline-flex items-center gap-2 rounded-full bg-primary/12 px-3 py-2 text-xs font-black text-primary" onClick={() => removeRuntimeBreak(runtimeBreak.afterSongId)}>
+                        <button key={runtimeBreak.afterSongId} type="button" className="inline-flex items-center gap-2 rounded-full bg-primary/12 px-3 py-2 text-xs font-semibold text-primary" onClick={() => removeRuntimeBreak(runtimeBreak.afterSongId)}>
                           {song.title} 뒤 · {formatSongDuration(runtimeBreak.durationSeconds)}
                           <Trash2 size={13} />
                         </button>
@@ -493,7 +519,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                 )}
               </>
             ) : (
-              <p className="text-sm font-bold text-muted-foreground">곡이 2개 이상일 때 설정할 수 있습니다.</p>
+              <p className="text-sm font-medium text-muted-foreground">곡이 2개 이상일 때 설정할 수 있습니다.</p>
             )}
           </div>
         </div>
@@ -507,12 +533,8 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               return (
                 <SwipeActions key={song.id} onEdit={() => startEditSong(song)} onDelete={() => deleteSong(song.id)}>
                   <div
-                    className="relative cursor-pointer rounded-3xl border p-4 pl-16 pr-14 transition"
-                    style={{
-                      borderColor: teamColor(team),
-                      backgroundColor: alpha(teamColor(team), selectedForRuntime ? "38" : "22"),
-                      boxShadow: selectedForRuntime ? `inset 0 0 0 2px ${alpha(teamColor(team), "70")}` : undefined,
-                    }}
+                    className={cn("relative cursor-pointer rounded-2xl p-4 pl-16 pr-14 text-neutral-900 transition", selectedForRuntime && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
+                    style={{ backgroundColor: teamColor(team) }}
                     role="button"
                     tabIndex={0}
                     aria-pressed={selectedForRuntime}
@@ -525,7 +547,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   >
                     <button
                       type="button"
-                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl border text-sm font-black tabular-nums transition", orderingSongId === song.id ? "border-primary bg-primary text-primary-foreground" : "border-primary/20 bg-white/65 text-primary hover:bg-white")}
+                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl border text-sm font-semibold tabular-nums transition", orderingSongId === song.id ? "border-primary bg-primary text-primary-foreground" : "border-primary/20 bg-background text-primary hover:bg-muted")}
                       aria-label={`${song.title} 순서 변경`}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -535,23 +557,23 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     >
                       {songIndex + 1}
                     </button>
-                    <span className={cn("absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full border transition", selectedForRuntime ? "border-primary bg-primary text-primary-foreground" : "border-primary/25 bg-white/55 text-transparent")}>
+                    <span className={cn("absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full border transition", selectedForRuntime ? "border-primary bg-primary text-primary-foreground" : "border-primary/25 bg-background text-transparent")}>
                       <Check size={15} strokeWidth={3} />
                     </span>
-                    <p className="text-lg font-black">{song.title}</p>
+                    <p className="text-lg font-semibold">{song.title}</p>
                     <p className="text-sm text-muted-foreground">
                       {team?.name ?? "팀 없음"} · 팀장 {data.users.find((user) => user.id === song.leaderUserId)?.name ?? "미지정"}
                       {song.durationSeconds ? ` · ${formatSongDuration(song.durationSeconds)}` : ""}
                     </p>
                     {orderingSongId === song.id && (
-                      <div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-white/55 p-3 dark:bg-white/5" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                      <div className="mt-3 flex flex-wrap gap-2 rounded-xl bg-background p-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                         {orderedSongs.map((_, index) => {
                           const position = index + 1;
                           return (
                             <button
                               key={position}
                               type="button"
-                              className={cn("grid h-9 w-9 place-items-center rounded-xl text-xs font-black tabular-nums transition", position === songIndex + 1 ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20")}
+                              className={cn("grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold tabular-nums transition", position === songIndex + 1 ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20")}
                               onClick={() => changeSongOrder(song.id, position)}
                             >
                               {position}
@@ -568,16 +590,16 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               );
             }
             return (
-              <div key={song.id} className="rounded-3xl border p-4" style={{ borderColor: teamColor(team), backgroundColor: alpha(teamColor(team), "22") }}>
+              <div key={song.id} className="rounded-2xl p-4 text-neutral-900" style={{ backgroundColor: teamColor(team) }}>
                   <div className="space-y-3">
                     <Field label="곡 / 무대 이름" value={editSongForm.title} onChange={(value) => setEditSongForm({ ...editSongForm, title: value })} />
                     <Field label="곡 시간 (선택, 분:초)" value={editSongForm.duration} onChange={(value) => setEditSongForm({ ...editSongForm, duration: value })} placeholder="예: 3:30" />
                     <Select label="소속 팀" value={editSongForm.teamId} onChange={(value) => setEditSongForm({ ...editSongForm, teamId: value })} options={data.teams.map((item) => [item.id, item.name])} />
-                    <div className="rounded-2xl bg-white/45 p-3">
-                      <p className="mb-2 text-sm font-black">곡 참여 인원 / 팀장</p>
+                    <div className="rounded-xl bg-background p-3">
+                      <p className="mb-2 text-sm font-semibold">팀원 / 곡팀장</p>
                       <div className="grid max-h-56 gap-2 overflow-auto">
                         {performanceMembers.map((user) => (
-                          <div key={user.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-2xl bg-white/50 p-2 text-sm">
+                          <div key={user.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl bg-background p-2 text-sm">
                             <UserPill user={user} data={data} />
                             <SoftCheckbox
                               checked={editSongForm.memberIds.includes(user.id)}
@@ -589,7 +611,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                             />
                             <SoftCheckbox
                               checked={editSongForm.leaderUserId === user.id}
-                              label="팀장"
+                              label="곡팀장"
                               onToggle={() => setEditSongForm((prev) => ({ ...prev, leaderUserId: user.id, memberIds: prev.memberIds.includes(user.id) ? prev.memberIds : [...prev.memberIds, user.id] }))}
                             />
                           </div>
@@ -598,7 +620,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                       <PrimaryButton onClick={() => saveSongEdit(song.id)}>수정 저장</PrimaryButton>
-                      <button type="button" className="rounded-2xl bg-white/70 px-4 py-3 text-sm font-black" onClick={() => setEditingSongId(null)}>취소</button>
+                      <button type="button" className="rounded-xl bg-background px-4 py-3 text-sm font-semibold" onClick={() => setEditingSongId(null)}>취소</button>
                     </div>
                   </div>
               </div>

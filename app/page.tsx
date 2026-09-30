@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { nowIso } from "@/lib/format";
 import { SESSION_KEY, readData, resetData, syncCurrentSongsToArchive, writeData } from "@/lib/local-data";
 import { isAdminRole } from "@/lib/permissions";
 import { readSession, writeSession, type Portal, type Session } from "@/lib/session";
 import type { AppData } from "@/types/domain";
 import { AppShell } from "@/components/app-shell";
 import { LoginScreen } from "@/components/login-screen";
-import { PasswordChangeScreen } from "@/components/password-change-screen";
 
 export default function HomePage() {
   const [data, setData] = useState<AppData | null>(null);
@@ -30,15 +28,21 @@ export default function HomePage() {
 
   const currentUser = data?.users.find((user) => user.id === session?.userId) ?? null;
 
-  function login(username: string, password: string) {
+  function login(name: string) {
     if (!data) return "데이터를 불러오는 중입니다.";
-    const user = data.users.find((item) => item.username === username && item.password === password && item.status === "ACTIVE");
-    if (!user) return "아이디 또는 비밀번호를 확인해주세요.";
+    const user = data.users.find((item) => item.name === name.trim() && item.status === "ACTIVE");
+    if (!user) return "등록된 이름이 없습니다. 관리자에게 멤버 등록을 요청해주세요.";
     if (loginMode === "admin" && !isAdminRole(user.role)) return "관리자 권한이 없는 계정입니다.";
     const nextSession = { userId: user.id, portal: loginMode };
     writeSession(nextSession);
     setSession(nextSession);
     return null;
+  }
+
+  function switchSession(userId: string, portal: Portal) {
+    const nextSession = { userId, portal };
+    writeSession(nextSession);
+    setSession(nextSession);
   }
 
   function logout() {
@@ -58,19 +62,10 @@ export default function HomePage() {
     return <LoginScreen mode={loginMode} setMode={setLoginMode} onLogin={login} onReset={() => persist(resetData())} dark={dark} toggleTheme={toggleTheme} />;
   }
 
-  if (currentUser.mustChangePassword) {
-    return (
-      <PasswordChangeScreen
-        user={currentUser}
-        onChange={(password) => {
-          persist({ ...data, users: data.users.map((user) => (user.id === currentUser.id ? { ...user, password, mustChangePassword: false, updatedAt: nowIso() } : user)) });
-        }}
-      />
-    );
-  }
-
   return (
     <AppShell
+      key={`${currentUser.id}-${session?.portal}`}
+      switchSession={switchSession}
       data={data}
       currentUser={currentUser}
       portal={session?.portal ?? "user"}

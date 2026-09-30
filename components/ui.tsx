@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { defaultBlue, palette } from "@/lib/schedule";
+import { defaultAccent, palette } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 
 export function SoftCheckbox({ checked, label, onToggle, className }: { checked: boolean; label: string; onToggle: () => void; className?: string }) {
@@ -11,13 +11,13 @@ export function SoftCheckbox({ checked, label, onToggle, className }: { checked:
       aria-pressed={checked}
       onClick={onToggle}
       className={cn(
-        "inline-flex min-h-9 items-center gap-2 rounded-2xl border px-3 py-1.5 text-sm font-black transition",
-        checked ? "border-primary/40 bg-white text-foreground shadow-sm shadow-primary/10" : "border-white/70 bg-white/45 text-muted-foreground hover:bg-white/80",
+        "inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition",
+        checked ? "border-primary/40 bg-white text-foreground" : "border-border bg-background text-muted-foreground hover:bg-background",
         className,
       )}
     >
-      <span className={cn("grid h-5 w-5 place-items-center rounded-full transition", checked ? "bg-primary text-white" : "bg-sky-100 ring-1 ring-inset ring-primary/20")}>
-        {checked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+      <span className={cn("grid h-4 w-4 place-items-center rounded transition", checked ? "bg-primary text-primary-foreground" : "border border-input bg-background")}>
+        {checked && <Check className="h-3 w-3 stroke-[3]" />}
       </span>
       {label}
     </button>
@@ -25,19 +25,19 @@ export function SoftCheckbox({ checked, label, onToggle, className }: { checked:
 }
 
 export function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
-  return <label className="block text-base font-bold">{label}<input className="mt-1 w-full rounded-2xl border border-white/80 bg-card/80 px-5 py-4 outline-none transition focus:ring-4 focus:ring-primary/15 dark:border-white/10" type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
+  return <label className="block text-sm font-medium">{label}<input className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const validValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : defaultBlue;
+  const validValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : defaultAccent;
   return (
-    <div className="space-y-3 rounded-2xl border border-white/80 bg-white/55 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+    <div className="space-y-3 rounded-xl border border-border bg-background p-4 shadow-sm dark:border-border">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-base font-black">{label}</p>
-          <p className="text-xs font-bold text-muted-foreground">{validValue.toUpperCase()}</p>
+          <p className="truncate text-base font-semibold">{label}</p>
+          <p className="text-xs font-medium text-muted-foreground">{validValue.toUpperCase()}</p>
         </div>
-        <span className="h-10 w-10 shrink-0 rounded-2xl border border-white/80 shadow-inner" style={{ backgroundColor: validValue }} />
+        <span className="h-10 w-10 shrink-0 rounded-xl border border-border" style={{ backgroundColor: validValue }} />
       </div>
       <div className="flex flex-wrap gap-2">
         {palette.map((color) => (
@@ -45,14 +45,14 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
             key={color}
             type="button"
             aria-label={`${color} 선택`}
-            className={cn("h-9 w-9 rounded-full border-2 shadow-sm transition hover:scale-105", validValue === color ? "border-foreground" : "border-white/80")}
+            className={cn("h-9 w-9 rounded-full border-2 shadow-sm transition hover:scale-105", validValue === color ? "border-foreground" : "border-border")}
             style={{ backgroundColor: color }}
             onClick={() => onChange(color)}
           />
         ))}
       </div>
       <input
-        className="w-full rounded-2xl border border-white/80 bg-card/75 px-4 py-3 text-sm font-black uppercase outline-none transition focus:ring-4 focus:ring-primary/15 dark:border-white/10"
+        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold uppercase outline-none transition focus:ring-2 focus:ring-primary/30 dark:border-border"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="#7BC7F2"
@@ -62,7 +62,7 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 }
 
 export function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-base font-bold">{label}<textarea className="mt-1 min-h-32 w-full rounded-2xl border border-white/80 bg-card/80 px-5 py-4 outline-none transition focus:ring-4 focus:ring-primary/15 dark:border-white/10" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+  return <label className="block text-sm font-medium">{label}<textarea className="mt-1 min-h-28 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 export function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[][] }) {
@@ -79,13 +79,13 @@ export function Select({ label, value, onChange, options }: { label: string; val
   }, []);
 
   return (
-    <div ref={rootRef} className="relative block text-base font-bold">
+    <div ref={rootRef} className="relative block text-sm font-medium">
       <p>{label}</p>
       <button
         type="button"
         className={cn(
-          "mt-1 flex w-full items-center justify-between gap-3 rounded-2xl border border-white/80 bg-card/80 px-5 py-4 text-left outline-none transition dark:border-white/10",
-          open ? "ring-4 ring-primary/15" : "hover:bg-white/90 dark:hover:bg-white/10",
+          "mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3 py-2.5 text-left text-base font-normal outline-none transition",
+          open ? "border-primary ring-2 ring-primary/20" : "hover:bg-muted",
         )}
         onClick={() => setOpen((next) => !next)}
       >
@@ -93,7 +93,7 @@ export function Select({ label, value, onChange, options }: { label: string; val
         <ChevronRight className={cn("h-5 w-5 text-muted-foreground transition", open ? "rotate-90" : "rotate-0")} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_48px_rgba(86,144,183,0.18)] backdrop-blur dark:border-white/10 dark:bg-card/95">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-background p-2 shadow-sm dark:border-border">
           {options.length === 0 ? (
             <div className="rounded-xl px-4 py-3 text-sm text-muted-foreground">없음</div>
           ) : (
@@ -103,7 +103,7 @@ export function Select({ label, value, onChange, options }: { label: string; val
                 <button
                   key={optionValue}
                   type="button"
-                  className={cn("flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-black transition", selected ? "bg-primary/18 text-foreground" : "hover:bg-muted/70")}
+                  className={cn("flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition", selected ? "bg-primary/18 text-foreground" : "hover:bg-muted")}
                   onClick={() => {
                     onChange(optionValue);
                     setOpen(false);
@@ -122,7 +122,7 @@ export function Select({ label, value, onChange, options }: { label: string; val
 }
 
 export function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
-  return <section className={cn("rounded-[1.75rem] border border-white/70 bg-white/84 p-6 shadow-[0_18px_60px_rgba(86,144,183,0.10)] backdrop-blur dark:border-white/10 dark:bg-card/82", className)}><h3 className="mb-5 text-xl font-black">{title}</h3>{children}</section>;
+  return <section className={cn("relative min-w-0 rounded-3xl bg-card p-4 sm:p-5", className)}><h3 className="mb-3 text-lg font-semibold tracking-tight">{title}</h3>{children}</section>;
 }
 
 export function SwipeActions({ children, onEdit, onDelete }: { children: React.ReactNode; onEdit: () => void; onDelete: () => void }) {
@@ -163,9 +163,9 @@ export function SwipeActions({ children, onEdit, onDelete }: { children: React.R
   }
 
   return (
-    <div className="relative overflow-hidden rounded-3xl">
+    <div className="relative overflow-hidden rounded-2xl">
       <div
-        className="absolute inset-y-0 right-0 flex w-[132px] overflow-hidden rounded-r-3xl transition-opacity duration-150"
+        className="absolute inset-y-0 right-0 flex w-[132px] overflow-hidden rounded-r-xl transition-opacity duration-150"
         style={{ opacity: offset < 0 ? 1 : 0, pointerEvents: offset < 0 ? "auto" : "none" }}
         aria-hidden={offset === 0}
       >
@@ -202,17 +202,17 @@ export function TwoColumn({ children }: { children: React.ReactNode }) {
 }
 
 export function DataList({ title, items }: { title: string; items: Array<{ id: string; title: string; meta: string }> }) {
-  return <Panel title={title}><div className="grid gap-2">{items.length === 0 && <p className="text-sm text-muted-foreground">표시할 항목이 없습니다.</p>}{items.map((item) => <div key={item.id} className="rounded-[1.1rem] border border-white/80 bg-card/68 p-4 dark:border-white/10"><p className="font-black">{item.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{item.meta}</p></div>)}</div></Panel>;
+  return <Panel title={title}><div className="divide-y divide-border">{items.length === 0 && <p className="text-sm text-muted-foreground">표시할 항목이 없습니다.</p>}{items.map((item) => <div key={item.id} className="py-3 first:pt-0 last:pb-0"><p className="font-semibold">{item.title}</p><p className="mt-0.5 text-sm leading-6 text-muted-foreground">{item.meta}</p></div>)}</div></Panel>;
 }
 
 export function PrimaryButton({ children, onClick, disabled, icon, className }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; icon?: React.ReactNode; className?: string }) {
-  return <button className={cn("flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50", className)} onClick={onClick} disabled={disabled}>{icon}{children}</button>;
+  return <button className={cn("flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-30", className)} onClick={onClick} disabled={disabled}>{icon}{children}</button>;
 }
 
 export function IconButton({ children, label, onClick }: { children: React.ReactNode; label: string; onClick: () => void }) {
-  return <button className="rounded-2xl bg-muted/70 p-3" onClick={onClick} aria-label={label}>{children}</button>;
+  return <button className="grid h-9 w-9 place-items-center rounded-full bg-background hover:bg-muted" onClick={onClick} aria-label={label}>{children}</button>;
 }
 
 export function segmentClass(active: boolean) {
-  return cn("rounded-[1rem] px-3 py-3 text-sm font-black transition", active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground");
+  return cn("rounded-full px-3 py-2 text-sm font-medium transition", active ? "bg-primary text-primary-foreground" : "text-muted-foreground");
 }
