@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { availabilitySegments, findPracticeConflicts, slotsCovering, getAvailableUserIds, slotsToBlocks, timesBetween } from "./schedule";
 import type { AppData, PracticeCandidate, ScheduleSurvey } from "../types/domain";
+import { diffData, rowsToData } from "./remote-data";
 
 const dates = ["2026-10-05", "2026-10-06"];
 const times = ["18:00", "18:30", "19:00", "19:30"];
@@ -51,5 +52,15 @@ assert.deepEqual(findPracticeConflicts(x, others, conflictData).map((c) => [c.ot
 const slotSurvey = { timeStart: "18:00", timeEnd: "22:00", slotMinutes: 30 } as ScheduleSurvey;
 assert.deepEqual(slotsCovering(slotSurvey, "19:10", "20:20"), ["19:00", "19:30", "20:00"]);
 assert.deepEqual(slotsCovering(slotSurvey, "19:00", "20:00"), ["19:00", "19:30"]);
+
+// DB 저장: 바뀐 항목만 올리고, 없어진 항목만 지운다
+const before = rowsToData([
+  { collection: "notices", id: "n1", data: { id: "n1", title: "a" } },
+  { collection: "notices", id: "n2", data: { id: "n2", title: "b" } },
+]);
+const after = { ...before, notices: [{ id: "n1", title: "a" }, { id: "n3", title: "c" }] } as unknown as AppData;
+const diff = diffData(before, after);
+assert.deepEqual(diff.upserts.map((row) => row.id), ["n3"]);
+assert.deepEqual(diff.deletes, [{ collection: "notices", id: "n2" }]);
 
 console.log("schedule checks passed");

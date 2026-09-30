@@ -24,7 +24,6 @@ export function AppShell({
   logout,
   dark,
   toggleTheme,
-  onReset,
   switchSession,
 }: {
   data: AppData;
@@ -34,7 +33,6 @@ export function AppShell({
   logout: () => void;
   dark: boolean;
   toggleTheme: () => void;
-  onReset: () => void;
   switchSession: (userId: string, portal: Portal) => void;
 }) {
   const adminMode = portal === "admin" && isAdminRole(currentUser.role);
@@ -121,7 +119,7 @@ export function AppShell({
           {view === "songs" && <SongManagementPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "archive" && <ArchivePanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "notices" && <NoticePanel data={data} currentUser={currentUser} persist={persist} admin />}
-          {view === "audit" && <AuditPanel data={data} onReset={onReset} />}
+          {view === "audit" && <AuditPanel data={data} />}
           {view === "surveys" && <SurveyPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "leader" && <LeaderPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "notices-user" && <NoticePanel data={data} currentUser={currentUser} persist={persist} />}
@@ -129,7 +127,8 @@ export function AppShell({
         </div>
       </section>
 
-      {/* ponytail: 테스트용 계정 전환 바. 비밀번호 없이 아무 계정으로나 들어가므로 배포 전에 switchSession과 함께 삭제. */}
+      {/* 테스트용 계정 전환 바. 비밀번호 없이 아무 계정으로나 들어가므로 개발 서버(npm run dev)에서만 보인다. */}
+      {process.env.NODE_ENV !== "production" && (
       <label className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-border bg-background px-3 py-2 text-xs font-semibold md:left-64 dark:border-border">
         <span className="shrink-0 text-muted-foreground">테스트 계정</span>
         <select
@@ -151,6 +150,7 @@ export function AppShell({
           </optgroup>
         </select>
       </label>
+      )}
     </main>
   );
 }

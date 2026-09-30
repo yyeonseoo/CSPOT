@@ -1,4 +1,4 @@
-import { Moon, RotateCcw, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import type { Portal } from "@/lib/session";
 import { Field, segmentClass } from "@/components/ui";
@@ -7,14 +7,12 @@ export function LoginScreen({
   mode,
   setMode,
   onLogin,
-  onReset,
   dark,
   toggleTheme,
 }: {
   mode: Portal;
   setMode: (mode: Portal) => void;
   onLogin: (name: string) => string | null;
-  onReset: () => void;
   dark: boolean;
   toggleTheme: () => void;
 }) {
@@ -54,10 +52,29 @@ export function LoginScreen({
             <button className="w-full rounded-full bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground">로그인</button>
           </div>
         </form>
-        <button type="button" className="mt-4 inline-flex items-center gap-1.5 self-center text-xs font-medium text-muted-foreground" onClick={onReset}>
-          <RotateCcw size={13} />
-          로컬 데이터 초기화
-        </button>
+      </div>
+    </main>
+  );
+}
+
+// 처음 접속한 기기에서 한 번만 입력하는 동아리 공용 코드
+export function ClubCodeScreen({ error, onSubmit }: { error: string; onSubmit: (code: string) => void }) {
+  const [code, setCode] = useState("");
+  return (
+    <main className="soft-shell flex min-h-screen flex-col justify-center px-4">
+      <div className="mx-auto w-full max-w-sm">
+        <h1 className="mb-6 text-4xl font-bold tracking-tight">동아리 코드</h1>
+        <form
+          className="space-y-4 rounded-3xl bg-card p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (code.trim()) onSubmit(code.trim());
+          }}
+        >
+          <Field label="코드" value={code} onChange={setCode} />
+          {error && <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+          <button className="w-full rounded-full bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground">확인</button>
+        </form>
       </div>
     </main>
   );

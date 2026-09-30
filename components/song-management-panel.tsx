@@ -193,7 +193,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
               {showForm && surveyForm}
             </div>
           ) : surveyForm}
-          <button type="button" className="mt-2 w-full rounded-xl border border-dashed border-muted-foreground/40 px-4 py-2.5 text-sm font-medium text-muted-foreground" onClick={fillDummyData}>테스트: 더미 데이터 채우기</button>
+          {process.env.NODE_ENV !== "production" && <button type="button" className="mt-2 w-full rounded-full border border-dashed border-muted-foreground/40 px-4 py-2.5 text-sm font-medium text-muted-foreground" onClick={fillDummyData}>테스트: 더미 데이터 채우기</button>}
         </Panel>
         {survey && (
           <Panel title="팀별 희망 시간">

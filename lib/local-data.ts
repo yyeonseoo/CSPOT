@@ -643,10 +643,9 @@ export function writeData(data: AppData) {
   window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
 }
 
-export function resetData() {
-  const seed = applySeedData(createSeedData());
-  writeData(seed);
-  return seed;
+// 비어 있는 DB나 브라우저 저장소를 처음 채울 기본 데이터 (과거 공연 이력, 랩팀 곡 등)
+export function createInitialData() {
+  return applySeedData(createSeedData());
 }
 
 export function createAudit(actor: ClubUser, action: string, targetType: string, targetId: string, after?: Record<string, unknown>): AuditLog {
