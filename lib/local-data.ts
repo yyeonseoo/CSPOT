@@ -1,8 +1,11 @@
-import type { AppData, ArchiveSong, AuditLog, ClubUser, Performance, ScheduleSurvey, Song, SongMember, Team } from "@/types/domain";
+import type { AppData, ArchiveSong, AuditLog, ClubUser, Performance, Song, SongMember, Team } from "@/types/domain";
 import { uid } from "@/lib/utils";
 
 export const STORAGE_KEY = "club-scheduler-local-data-v4";
 export const SESSION_KEY = "club-scheduler-session-v4";
+const SEED_VERSION_KEY = "club-scheduler-seed-version";
+// 하드코딩된 이력/곡 데이터를 바꾸면 이 값을 올려야 기존 로컬 데이터에 한 번 다시 반영된다.
+const SEED_VERSION = "1";
 
 const now = () => new Date().toISOString();
 const danceTeamColor = "#7BC7F2";
@@ -149,12 +152,15 @@ export function createSeedData(): AppData {
 export function readData(): AppData {
   if (typeof window === "undefined") return createSeedData();
   const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const seed = createSeedData();
-    writeData(seed);
-    return seed;
-  }
-  const parsed = JSON.parse(raw) as AppData;
+  const parsed = raw ? JSON.parse(raw) as AppData : createSeedData();
+  const normalizedData = normalizeData(parsed);
+  const seeded = Boolean(raw) && window.localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION;
+  const data = seeded ? normalizedData : applySeedData(normalizedData);
+  if (!seeded || JSON.stringify(data) !== JSON.stringify(parsed)) writeData(data);
+  return data;
+}
+
+function normalizeData(parsed: AppData): AppData {
   const archive2025MemberNames = new Set(
     (parsed.archiveSongs ?? [])
       .filter((song) => song.archiveKey?.includes("2025") || song.source?.includes("2025"))
@@ -164,7 +170,7 @@ export function readData(): AppData {
     ...(parsed.songMembers ?? []).map((member) => member.userId),
     ...(parsed.performances ?? []).flatMap((performance) => performance.memberIds ?? []),
   ]);
-  const normalizedData: AppData = {
+  return {
     ...parsed,
     archiveSongs: dedupeArchiveSongs(parsed.archiveSongs ?? []),
     practiceCandidates: dedupePracticeCandidates(parsed.practiceCandidates ?? []),
@@ -176,18 +182,18 @@ export function readData(): AppData {
       activeYears: user.activeYears ?? inferActiveYears(user, archive2025MemberNames, activeCurrentUserIds),
     })),
   };
+}
+
+function applySeedData(data: AppData): AppData {
   const completedArchiveData = withCompletedDanceArchive(
-    withCompletedDanceArchive(normalizedData, completedDanceArchive2025Rows, 2025, "2025 춤팀 곡 목록.pdf"),
+    withCompletedDanceArchive(data, completedDanceArchive2025Rows, 2025, "2025 춤팀 곡 목록.pdf"),
     completedDanceArchive2026Rows,
     2026,
     "2026 춤팀 완료 곡",
   );
-  const aliasNormalizedData = normalizeMemberAliases(completedArchiveData);
-  const currentRapData = withCurrentRap515Day(aliasNormalizedData);
+  const currentRapData = withCurrentRap515Day(normalizeMemberAliases(completedArchiveData));
   const currentArchiveData = syncCurrentSongsToArchive(currentRapData);
-  const migratedData = { ...currentArchiveData, archiveSongs: dedupeArchiveSongs(currentArchiveData.archiveSongs) };
-  if (JSON.stringify(migratedData) !== JSON.stringify(normalizedData)) writeData(migratedData);
-  return migratedData;
+  return { ...currentArchiveData, archiveSongs: dedupeArchiveSongs(currentArchiveData.archiveSongs) };
 }
 
 function dedupePracticeCandidates(candidates: AppData["practiceCandidates"]) {
@@ -468,6 +474,10 @@ function withCurrentRap515Day(data: AppData): AppData {
   };
 }
 
+export function archiveYears(song: ArchiveSong) {
+  return song.years?.length ? song.years : inferArchiveYears(song);
+}
+
 function inferArchiveYears(song: ArchiveSong) {
   const value = `${song.source ?? ""} ${song.archiveKey ?? ""}`;
   return [
@@ -553,11 +563,12 @@ function withCompletedDanceArchive(data: AppData, archiveRows: readonly DanceArc
 
 export function writeData(data: AppData) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(syncCurrentSongsToArchive(data)));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
 }
 
 export function resetData() {
-  const seed = createSeedData();
+  const seed = applySeedData(createSeedData());
   writeData(seed);
   return seed;
 }
@@ -572,16 +583,5 @@ export function createAudit(actor: ClubUser, action: string, targetType: string,
     targetId,
     after,
     createdAt: now(),
-  };
-}
-
-export function makeSurvey(input: Omit<ScheduleSurvey, "id" | "status" | "createdAt" | "updatedAt">): ScheduleSurvey {
-  const createdAt = now();
-  return {
-    ...input,
-    id: uid("survey"),
-    status: "OPEN",
-    createdAt,
-    updatedAt: createdAt,
   };
 }

@@ -1,17 +1,9 @@
-import type { ClubUser, Role, Song } from "@/types/domain";
+import type { Role } from "@/types/domain";
 
 export const ADMIN_ROLES: Role[] = ["SUPER_ADMIN", "VICE_ADMIN", "TREASURER", "TEAM_ADMIN"];
 
 export function isAdminRole(role: Role) {
   return ADMIN_ROLES.includes(role);
-}
-
-export function canCreateAdmin(role: Role) {
-  return role === "SUPER_ADMIN";
-}
-
-export function canChangeRole(role: Role) {
-  return role === "SUPER_ADMIN";
 }
 
 export function canManageTeams(role: Role) {
@@ -20,14 +12,6 @@ export function canManageTeams(role: Role) {
 
 export function canManageUsers(role: Role) {
   return isAdminRole(role);
-}
-
-export function canApproveSchedules(role: Role) {
-  return isAdminRole(role);
-}
-
-export function canCreateSurvey(user: ClubUser, song: Song) {
-  return isAdminRole(user.role) || song.leaderUserId === user.id;
 }
 
 export function roleLabel(role: Role) {
