@@ -131,7 +131,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
       {tab === "list" && (
       <div className="space-y-4">
         <Panel title="멤버 목록">
-          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          <div className="mb-4 flex flex-wrap gap-2">
             {termOptions.map((term) => {
               const count = data.users.filter((user) => termsOf(user).includes(term)).length;
               const selected = selectedTerm === term;
@@ -139,7 +139,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
                 <button
                   key={term}
                   type="button"
-                  className={cn("shrink-0 rounded-xl px-4 py-3 text-left transition", selected ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground")}
+                  className={cn("rounded-xl px-3.5 py-2.5 text-left transition", selected ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground")}
                   onClick={() => {
                     setSelectedTerm(term);
                     setShowAllMembers(false);
