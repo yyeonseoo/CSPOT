@@ -2,7 +2,7 @@ import { ChevronLeft, Check, X } from "lucide-react";
 import { useState } from "react";
 import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, today } from "@/lib/format";
 import { createAudit } from "@/lib/local-data";
-import { candidateBlock, findPracticeConflicts, getSongUserIds, slotKey, slotsCovering, surveyLabel, surveyUserIds, timesBetween } from "@/lib/schedule";
+import { candidateBlock, findPracticeConflicts, isPastPerformance, getSongUserIds, slotKey, slotsCovering, surveyLabel, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
 import { describeConflict, DayTimeline, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
@@ -39,6 +39,8 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
   const [selectedId, setSelectedId] = useState("");
   const validForm = form.title.trim() !== "" && form.startDate <= form.endDate && form.timeStart < form.timeEnd && form.performanceIds.length > 0;
   const requests = survey ? surveyRequests(survey, data) : [];
+  // 조사 대상으로 고를 수 있는 공연: 아직 끝나지 않은 공연만
+  const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance));
   const conflictsById = new Map(requests.map((candidate) => [candidate.id, findPracticeConflicts(candidate, requests, data)]));
   const selected = requests.find((candidate) => candidate.id === selectedId);
   const requestsBySlot = new Map<string, PracticeCandidate[]>();
@@ -104,8 +106,8 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
       <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setForm({ ...form, timeStart: "00:00", timeEnd: "24:00" })}>하루 전체</button>
       <p className="pt-1 text-sm font-medium">조사 대상 공연</p>
       <div className="flex flex-wrap gap-2">
-        {data.performances.length === 0 && <p className="text-sm text-muted-foreground">공연이 없습니다.</p>}
-        {data.performances.map((performance) => (
+        {upcomingPerformances.length === 0 && <p className="text-sm text-muted-foreground">예정된 공연이 없습니다.</p>}
+        {upcomingPerformances.map((performance) => (
           <SoftCheckbox
             key={performance.id}
             checked={form.performanceIds.includes(performance.id)}

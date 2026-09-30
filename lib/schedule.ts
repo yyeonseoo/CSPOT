@@ -113,12 +113,17 @@ export function surveyLabel(survey: ScheduleSurvey) {
   return `${survey.title} (${range})${survey.status === "OPEN" ? "" : " (마감)"}`;
 }
 
+// 끝난 공연: 종료 시각이 지났거나 완료/취소 처리된 공연
+export function isPastPerformance(performance: Performance, now = new Date().toISOString()) {
+  return performance.endsAt < now || performance.status === "COMPLETED" || performance.status === "CANCELED";
+}
+
 // 곡팀장 권한은 끝나지 않은 공연의 곡에만 준다. 공연이 끝나면 그 곡의 곡팀장 탭도 사라진다.
 export function activeLeaderSongs(userId: string, data: AppData, now = new Date().toISOString()) {
   return data.songs.filter((song) => {
     if (song.leaderUserId !== userId) return false;
     const performance = data.performances.find((item) => item.id === song.performanceId);
-    return Boolean(performance) && performance!.endsAt >= now && performance!.status !== "COMPLETED" && performance!.status !== "CANCELED";
+    return Boolean(performance) && !isPastPerformance(performance!, now);
   });
 }
 

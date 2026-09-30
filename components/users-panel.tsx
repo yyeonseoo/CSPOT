@@ -49,6 +49,12 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
     persist({ ...data, users: data.users.map((user) => ids.has(user.id) ? { ...user, activeTerms: [...termsOf(user), selectedTerm].sort(), updatedAt: nowIso() } : user) });
   }
 
+  // 계정은 남기고 선택한 학기에서만 모두 뺀다.
+  function clearTerm() {
+    if (!window.confirm(`${termLabel(selectedTerm)} 명단에서 ${usersByTerm.length}명을 모두 뺄까요? 계정과 다른 학기 기록은 그대로 남습니다.`)) return;
+    persist({ ...data, users: data.users.map((user) => termsOf(user).includes(selectedTerm) ? { ...user, activeTerms: termsOf(user).filter((term) => term !== selectedTerm), updatedAt: nowIso() } : user) });
+  }
+
   function createUser() {
     const name = form.name.trim();
     // 이름으로 로그인하므로 이름이 겹치면 안 된다.
@@ -131,6 +137,11 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
             </button>
           )}
           {usersByTerm.length === 0 && <p className="text-sm text-muted-foreground">이 학기에 등록된 멤버가 없습니다.</p>}
+          {usersByTerm.length > 0 && (
+            <button type="button" className="mb-4 w-full rounded-full border border-destructive/40 px-4 py-2.5 text-sm font-semibold text-destructive" onClick={clearTerm}>
+              {termLabel(selectedTerm)} 명단 비우기
+            </button>
+          )}
           <div className="grid gap-3">
             {visibleUsers.map((user) => {
               const team = data.teams.find((item) => item.id === user.teamId);

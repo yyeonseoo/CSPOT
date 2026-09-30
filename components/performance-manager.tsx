@@ -1,8 +1,8 @@
 import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { currentTerm, formatDateTime, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
+import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { createAudit, fixSongLeaders } from "@/lib/local-data";
-import { alpha, palette, teamColor } from "@/lib/schedule";
+import { alpha, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -51,6 +51,15 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
     setPerf({ title: "", startsAt: `${today()}T19:00`, endsAt: `${today()}T21:00`, location: "" });
   }
 
+  const upcoming = data.performances.filter((performance) => !isPastPerformance(performance)).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const past = data.performances.filter((performance) => isPastPerformance(performance)).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+  const performanceCard = (performance: Performance) => (
+    <button key={performance.id} style={{ backgroundColor: performance.color }} className={cn("rounded-2xl p-4 text-left text-neutral-900 transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
+      <p className="font-semibold">{performance.title}</p>
+      <p className="mt-1 text-sm text-neutral-700">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
+    </button>
+  );
+
   return (
     <section className="space-y-5">
       <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
@@ -64,14 +73,14 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
           </div>
         </Panel>
         <Panel title="공연 목록" className="order-1 xl:order-none">
-          <div className="grid gap-3 md:grid-cols-2">
-            {data.performances.map((performance) => (
-              <button key={performance.id} style={{ backgroundColor: performance.color }} className={cn("rounded-2xl p-4 text-left text-neutral-900 transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
-                <p className="font-semibold">{performance.title}</p>
-                <p className="mt-1 text-sm text-neutral-700">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
-              </button>
-            ))}
-          </div>
+          {upcoming.length === 0 && <p className="text-sm text-muted-foreground">예정된 공연이 없습니다.</p>}
+          <div className="grid gap-3 md:grid-cols-2">{upcoming.map(performanceCard)}</div>
+          {past.length > 0 && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">지난 공연 {past.length}개</summary>
+              <div className="mt-3 grid gap-3 opacity-70 md:grid-cols-2">{past.map(performanceCard)}</div>
+            </details>
+          )}
         </Panel>
       </div>
       <div ref={detailRef} className="scroll-mt-20">
@@ -159,6 +168,25 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
       return next.length === ids.length ? ids : next;
     });
   }, [data.songs, performance.id]);
+
+  const infoDraft = () => ({ title: performance.title, startsAt: toDatetimeLocal(performance.startsAt), endsAt: toDatetimeLocal(performance.endsAt), location: performance.location ?? "" });
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState(infoDraft);
+
+  // 공연명/시간/장소를 바꾸면 캘린더의 공연 일정도 같이 바꾼다.
+  function saveInfo() {
+    const updatedAt = nowIso();
+    const startsAt = new Date(infoForm.startsAt).toISOString();
+    const endsAt = new Date(infoForm.endsAt).toISOString();
+    const title = infoForm.title.trim();
+    persist({
+      ...data,
+      performances: data.performances.map((item) => item.id === performance.id ? { ...item, title, startsAt, endsAt, location: infoForm.location.trim(), updatedAt } : item),
+      schedules: data.schedules.map((schedule) => schedule.type === "PERFORMANCE" && schedule.performanceId === performance.id ? { ...schedule, title, startsAt, endsAt, location: infoForm.location.trim() || undefined, updatedAt } : schedule),
+      auditLogs: [...data.auditLogs, createAudit(currentUser, "UPDATE_PERFORMANCE", "performances", performance.id, { title, startsAt, endsAt, location: infoForm.location })],
+    });
+    setEditingInfo(false);
+  }
 
   function updatePerformance(partial: Partial<Performance>) {
     persist({ ...data, performances: data.performances.map((item) => (item.id === performance.id ? { ...item, ...partial, updatedAt: nowIso() } : item)) });
@@ -331,10 +359,31 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   }
 
   return (
-    <Panel title={`${performance.title} 상세`} className="p-2.5 sm:p-6">
-      <div className="mb-5 rounded-2xl bg-muted p-4">
-        <p className="mb-2 text-sm font-semibold">공연 설명 / 운영 메모</p>
-        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{performance.description || "설명 없음"}</p>
+    <Panel title={`${performance.title} 상세${isPastPerformance(performance) ? " (지난 공연)" : ""}`} className="p-2.5 sm:p-6">
+      <div className="mb-5 space-y-3 rounded-2xl bg-background p-4">
+        {editingInfo ? (
+          <>
+            <Field label="공연명" value={infoForm.title} onChange={(value) => setInfoForm({ ...infoForm, title: value })} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Field label="시작" type="datetime-local" value={infoForm.startsAt} onChange={(value) => setInfoForm({ ...infoForm, startsAt: value })} />
+              <Field label="종료" type="datetime-local" value={infoForm.endsAt} onChange={(value) => setInfoForm({ ...infoForm, endsAt: value })} />
+            </div>
+            <Field label="장소" value={infoForm.location} onChange={(value) => setInfoForm({ ...infoForm, location: value })} />
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="rounded-full bg-muted px-4 py-3 text-sm font-semibold" onClick={() => setEditingInfo(false)}>취소</button>
+              <PrimaryButton onClick={saveInfo} disabled={!infoForm.title.trim() || !infoForm.startsAt || !infoForm.endsAt || infoForm.startsAt >= infoForm.endsAt}>저장</PrimaryButton>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 text-sm">
+              <p className="font-semibold">{formatDateTime(performance.startsAt)} ~ {formatDateTime(performance.endsAt)}</p>
+              <p className="text-muted-foreground">{performance.location || "장소 미정"}</p>
+              {performance.description && <p className="mt-2 whitespace-pre-wrap leading-6 text-muted-foreground">{performance.description}</p>}
+            </div>
+            <button type="button" className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold" onClick={() => { setInfoForm(infoDraft()); setEditingInfo(true); }}>정보 수정</button>
+          </div>
+        )}
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
         <Panel title="공연 참여 인원" className="p-3 shadow-none sm:p-6">

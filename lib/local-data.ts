@@ -333,8 +333,8 @@ export function syncCurrentSongsToArchive(data: AppData): AppData {
       leaderName,
       memberNames,
       durationSeconds: song.durationSeconds,
-      years: [2026],
-      source: "현재 진행 곡",
+      years: [new Date(performance.startsAt).getFullYear()],
+      source: performance.endsAt < now() || performance.status === "COMPLETED" || performance.status === "CANCELED" ? "지난 공연" : "현재 진행 곡",
     };
     const unchanged = existing
       && existing.performanceTitle === comparable.performanceTitle

@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
-import { defaultAccent, isAppData } from "@/lib/schedule";
+import { defaultAccent, isAppData, isPastPerformance } from "@/lib/schedule";
 import type { AppData, ClubUser } from "@/types/domain";
 import { ColorField, Panel, PrimaryButton } from "@/components/ui";
 
 export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   const [performanceColors, setPerformanceColors] = useState<Record<string, string>>(currentUser.performanceColors ?? {});
+  const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance));
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,10 +66,10 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
       <div className="space-y-4">
         <div className="space-y-3 rounded-xl bg-muted p-4">
           <p className="text-sm font-semibold">공연 색상</p>
-          {data.performances.length === 0 ? (
-            <p className="rounded-xl bg-background p-4 text-sm font-medium text-muted-foreground">아직 생성된 공연이 없습니다.</p>
+          {upcomingPerformances.length === 0 ? (
+            <p className="rounded-xl bg-background p-4 text-sm font-medium text-muted-foreground">예정된 공연이 없습니다.</p>
           ) : (
-            data.performances.map((performance) => (
+            upcomingPerformances.map((performance) => (
               <ColorField key={performance.id} label={performance.title} value={performanceColors[performance.id] ?? defaultAccent} onChange={(value) => setPerformanceColors({ ...performanceColors, [performance.id]: value })} />
             ))
           )}
