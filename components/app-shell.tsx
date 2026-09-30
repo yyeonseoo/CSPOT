@@ -1,4 +1,4 @@
-import { Archive, CalendarDays, ClipboardList, LogOut, Megaphone, Menu, Moon, Music2, Settings, Sun, Users, type LucideIcon } from "lucide-react";
+import { Archive, CalendarDays, ClipboardList, LogOut, Megaphone, Menu, Moon, Music2, Settings, Sun, Ticket, Users, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { isAdminRole, roleLabel } from "@/lib/permissions";
 import { activeLeaderSongs } from "@/lib/schedule";
@@ -11,6 +11,7 @@ import { CalendarPanel } from "@/components/calendar-panel";
 import { MyPagePanel } from "@/components/my-page-panel";
 import { NoticePanel } from "@/components/notice-panel";
 import { PerformanceManager } from "@/components/performance-manager";
+import { PerformanceView } from "@/components/performance-view";
 import { SongManagementPanel } from "@/components/song-management-panel";
 import { LeaderPanel, SurveyPanel } from "@/components/survey-panel";
 import { UsersPanel } from "@/components/users-panel";
@@ -53,6 +54,7 @@ export function AppShell({
         ["surveys", "조사", ClipboardList],
         // 곡팀장인 사람에게만 보이는 탭
         ...(activeLeaderSongs(currentUser.id, data).length > 0 ? [["leader", "곡팀장", Music2] as NavItem] : []),
+        ["performances-user", "공연", Ticket],
         ["notices-user", "공지", Megaphone],
         ["mypage", "마이", Settings],
       ];
@@ -120,6 +122,7 @@ export function AppShell({
           {view === "audit" && <AuditPanel data={data} />}
           {view === "surveys" && <SurveyPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "leader" && <LeaderPanel data={data} currentUser={currentUser} persist={persist} />}
+          {view === "performances-user" && <PerformanceView data={data} />}
           {view === "notices-user" && <NoticePanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "mypage" && <MyPagePanel data={data} currentUser={currentUser} adminMode={adminMode} persist={persist} />}
         </div>
