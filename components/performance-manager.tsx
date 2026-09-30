@@ -197,6 +197,29 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     setEditingInfo(false);
   }
 
+  // 공연과 그 곡, 연습 요청, 일정을 지운다. 이 공연 곡의 과거 공연 이력 카드는 기록으로 남긴다.
+  function deletePerformance() {
+    if (!window.confirm(`"${performance.title}" 공연을 삭제할까요? 곡 팀, 연습 요청, 공연과 연습 일정이 함께 지워집니다. 과거 공연 이력 카드는 남습니다.`)) return;
+    const songIds = new Set(songs.map((song) => song.id));
+    const currentKeyPrefix = `current-${performance.id}-`;
+    // 이 공연만 대상으로 하던 조사는 대상이 없어지므로 응답과 함께 지운다.
+    const orphanSurveyIds = new Set(data.surveys.filter((survey) => survey.performanceIds.length === 1 && survey.performanceIds[0] === performance.id).map((survey) => survey.id));
+    persist({
+      ...data,
+      performances: data.performances.filter((item) => item.id !== performance.id),
+      songs: data.songs.filter((song) => !songIds.has(song.id)),
+      songMembers: data.songMembers.filter((member) => !songIds.has(member.songId)),
+      schedules: data.schedules.filter((schedule) => schedule.performanceId !== performance.id && !(schedule.songId && songIds.has(schedule.songId))),
+      practiceCandidates: data.practiceCandidates.filter((candidate) => !songIds.has(candidate.songId) && !orphanSurveyIds.has(candidate.surveyId)),
+      surveys: data.surveys.filter((survey) => !orphanSurveyIds.has(survey.id)).map((survey) => survey.performanceIds.includes(performance.id) ? { ...survey, performanceIds: survey.performanceIds.filter((id) => id !== performance.id) } : survey),
+      availabilityResponses: data.availabilityResponses.filter((response) => !orphanSurveyIds.has(response.surveyId)),
+      notices: data.notices.filter((notice) => notice.targetPerformanceId !== performance.id),
+      // 현재 곡 카드(current-)는 곡이 없어지면 사라지므로 일반 이력 카드로 바꿔 남긴다.
+      archiveSongs: data.archiveSongs.map((item) => item.archiveKey.startsWith(currentKeyPrefix) ? { ...item, archiveKey: `kept-${item.id}`, source: "지난 공연" } : item),
+      auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_PERFORMANCE", "performances", performance.id, { title: performance.title })],
+    });
+  }
+
   function updatePerformance(partial: Partial<Performance>) {
     persist({ ...data, performances: data.performances.map((item) => (item.id === performance.id ? { ...item, ...partial, updatedAt: nowIso() } : item)) });
   }
@@ -391,7 +414,10 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <p className="text-muted-foreground">{performance.location || "장소 미정"}</p>
               {performance.description && <p className="mt-2 whitespace-pre-wrap leading-6 text-muted-foreground">{performance.description}</p>}
             </div>
-            <button type="button" className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold" onClick={() => { setInfoForm(infoDraft()); setEditingInfo(true); }}>정보 수정</button>
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button type="button" className="rounded-full bg-muted px-3 py-1.5 text-xs font-semibold" onClick={() => { setInfoForm(infoDraft()); setEditingInfo(true); }}>정보 수정</button>
+              <button type="button" className="rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-destructive" onClick={deletePerformance}>공연 삭제</button>
+            </div>
           </div>
         )}
       </div>

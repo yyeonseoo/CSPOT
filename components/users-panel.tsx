@@ -39,6 +39,16 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
     setTeamName("");
   }
 
+  function renameTeam(team: Team) {
+    const name = window.prompt("새 팀 이름", team.name)?.trim();
+    if (!name || name === team.name) return;
+    if (data.teams.some((item) => item.id !== team.id && item.name === name)) {
+      window.alert("같은 이름의 팀이 이미 있습니다.");
+      return;
+    }
+    persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, name, updatedAt: nowIso() } : item), auditLogs: [...data.auditLogs, createAudit(currentUser, "RENAME_TEAM", "teams", team.id, { name })] });
+  }
+
   function deleteTeam(teamId: string) {
     const teamHasUsers = data.users.some((user) => user.teamId === teamId);
     const teamHasSongs = data.songs.some((song) => song.teamId === teamId);
@@ -111,7 +121,10 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
               return (
                 <div key={team.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium" style={{ backgroundColor: teamColor(team) }}>
                   <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: teamColor(team) }} />{team.name}</span>
-                  <button className="text-xs text-muted-foreground disabled:opacity-40" disabled={!canDelete} onClick={() => deleteTeam(team.id)}>삭제</button>
+                  <span className="flex gap-3">
+                    <button className="text-xs font-medium text-neutral-800" onClick={() => renameTeam(team)}>이름 변경</button>
+                    <button className="text-xs text-neutral-700 disabled:opacity-40" disabled={!canDelete} title={canDelete ? "" : "소속 멤버나 곡이 있으면 삭제할 수 없습니다"} onClick={() => deleteTeam(team.id)}>삭제</button>
+                  </span>
                 </div>
               );
             })}

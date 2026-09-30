@@ -35,13 +35,16 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
   const survey = data.surveys.find((item) => item.id === surveyId) ?? data.surveys[data.surveys.length - 1];
   const [form, setForm] = useState({ title: "", startDate: today(), endDate: today(), timeStart: "18:00", timeEnd: "22:00", performanceIds: [] as string[] });
   const [showForm, setShowForm] = useState(false);
+  // 수정 중인 조사 id. 비어 있으면 새 조사
+  const [editingSurveyId, setEditingSurveyId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [viewTab, setViewTab] = useState<"grid" | "day">("grid");
   const validForm = form.title.trim() !== "" && form.startDate <= form.endDate && form.timeStart < form.timeEnd && form.performanceIds.length > 0;
   const requests = survey ? surveyRequests(survey, data) : [];
   // 조사 대상으로 고를 수 있는 공연: 아직 끝나지 않은 공연만
-  const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance));
+  // 수정할 때 이미 골라둔 공연은 끝났어도 보여준다.
+  const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance) || form.performanceIds.includes(performance.id));
   const conflictsById = new Map(requests.map((candidate) => [candidate.id, findPracticeConflicts(candidate, requests, data)]));
   const selected = requests.find((candidate) => candidate.id === selectedId);
   const requestsBySlot = new Map<string, PracticeCandidate[]>();
@@ -64,12 +67,48 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
 
   function openSurvey() {
     if (!validForm) return;
+    if (editingSurveyId) {
+      const updatedAt = nowIso();
+      persist({
+        ...data,
+        surveys: data.surveys.map((item) => item.id === editingSurveyId ? { ...item, ...form, title: form.title.trim(), updatedAt } : item),
+        auditLogs: [...data.auditLogs, createAudit(currentUser, "UPDATE_SURVEY", "surveys", editingSurveyId, form)],
+      });
+      setEditingSurveyId("");
+      setShowForm(false);
+      setForm({ ...form, title: "", performanceIds: [] });
+      return;
+    }
     const createdAt = nowIso();
     const next: ScheduleSurvey = { id: uid("survey"), createdBy: currentUser.id, ...form, title: form.title.trim(), slotMinutes: 30, status: "OPEN", createdAt, updatedAt: createdAt };
     persist({ ...data, surveys: [...data.surveys, next], auditLogs: [...data.auditLogs, createAudit(currentUser, "OPEN_SURVEY", "surveys", next.id, next)] });
     setSurveyId(next.id);
     setShowForm(false);
     setForm({ ...form, title: "", performanceIds: [] });
+    closeSheet();
+  }
+
+  function startEditSurvey() {
+    if (!survey) return;
+    setForm({ title: survey.title, startDate: survey.startDate, endDate: survey.endDate, timeStart: survey.timeStart, timeEnd: survey.timeEnd, performanceIds: survey.performanceIds });
+    setEditingSurveyId(survey.id);
+    setShowForm(true);
+  }
+
+  // 응답과 요청은 같이 지우고, 이미 확정된 연습 일정은 캘린더에 남긴다.
+  function deleteSurvey() {
+    if (!survey) return;
+    if (!window.confirm(`"${survey.title}" 조사를 삭제할까요? 응답과 연습 요청이 함께 지워집니다. 이미 확정된 연습은 캘린더에 남습니다.`)) return;
+    persist({
+      ...data,
+      surveys: data.surveys.filter((item) => item.id !== survey.id),
+      availabilityResponses: data.availabilityResponses.filter((response) => response.surveyId !== survey.id),
+      practiceCandidates: data.practiceCandidates.filter((candidate) => candidate.surveyId !== survey.id),
+      auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_SURVEY", "surveys", survey.id, survey)],
+    });
+    setSurveyId("");
+    setEditingSurveyId("");
+    setShowForm(false);
     closeSheet();
   }
 
@@ -117,7 +156,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
           />
         ))}
       </div>
-      <PrimaryButton onClick={openSurvey} disabled={!validForm}>조사 열기</PrimaryButton>
+      <PrimaryButton onClick={openSurvey} disabled={!validForm}>{editingSurveyId ? "수정 저장" : "조사 열기"}</PrimaryButton>
     </div>
   );
 
@@ -141,7 +180,11 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
                 </p>
                 <button type="button" className="shrink-0 rounded-xl bg-background px-3 py-2 text-sm font-semibold shadow-sm" onClick={toggleSurvey}>{survey.status === "OPEN" ? "마감" : "다시 열기"}</button>
               </div>
-              <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setShowForm((value) => !value)}>{showForm ? "닫기" : "새 조사 열기"}</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="rounded-full bg-background px-4 py-2 text-sm font-medium" onClick={startEditSurvey}>조사 수정</button>
+                <button type="button" className="rounded-full bg-background px-4 py-2 text-sm font-medium text-destructive" onClick={deleteSurvey}>조사 삭제</button>
+              </div>
+              <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => { if (showForm) { setShowForm(false); setEditingSurveyId(""); setForm({ ...form, title: "", performanceIds: [] }); } else setShowForm(true); }}>{showForm ? "닫기" : "새 조사 열기"}</button>
               {showForm && surveyForm}
             </div>
           ) : surveyForm}
@@ -210,6 +253,19 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
   // 이걸 확정하면 겹치는 다른 팀에 남는 연습(확정 + 이 시간과 안 겹치는 후보) 수
   const remainingFor = (songId: string) => requests.filter((item) => item.songId === songId && (item.status === "APPROVED" || findPracticeConflicts(target, [item], data).length === 0)).length;
 
+  // 캘린더 연습 일정을 지우고 요청을 다시 대기로 돌린다.
+  function cancelApproval() {
+    if (!window.confirm("확정을 취소할까요? 캘린더의 연습 일정이 지워지고 요청은 다시 대기로 돌아갑니다.")) return;
+    const updatedAt = nowIso();
+    const isSource = (schedule: Schedule) => schedule.candidateId === request.id || (!schedule.candidateId && schedule.songId === request.songId && schedule.startsAt === request.startsAt && schedule.endsAt === request.endsAt);
+    persist({
+      ...data,
+      schedules: data.schedules.filter((schedule) => !(schedule.type === "PRACTICE" && isSource(schedule))),
+      practiceCandidates: data.practiceCandidates.map((item) => item.id === request.id ? { ...item, status: "PENDING" as const, reviewedBy: undefined, reviewedAt: undefined, updatedAt } : item),
+      auditLogs: [...data.auditLogs, createAudit(currentUser, "CANCEL_SCHEDULE", "practiceCandidates", request.id, request)],
+    });
+  }
+
   function review(status: "APPROVED" | "REJECTED") {
     if (!song) return;
     if (status === "APPROVED" && conflicts.some((conflict) => conflict.other.status === "APPROVED") && !window.confirm("이미 확정된 연습과 겹칩니다. 그래도 확정할까요?")) return;
@@ -269,6 +325,9 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
         </div>
       )}
       <AvailabilityBreakdown survey={survey} data={data} memberIds={memberIds} date={edit.date} times={slotsCovering(survey, edit.start, edit.end)} />
+      {!pending && (
+        <button type="button" className="w-full rounded-full bg-background px-4 py-3 text-sm font-semibold text-destructive" onClick={cancelApproval}>확정 취소</button>
+      )}
       {pending && (
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive" onClick={() => review("REJECTED")}>반려</button>
