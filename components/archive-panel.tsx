@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
-import { createAudit, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
+import { archiveYears, createAudit, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
 import { archiveSourceLabel, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ArchiveSong, ClubUser, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
-import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions } from "@/components/ui";
+import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs } from "@/components/ui";
 
 export function ArchivePanel({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
   const [query, setQuery] = useState("");
@@ -42,6 +42,10 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
       if (b.selectedMatchCount !== a.selectedMatchCount) return b.selectedMatchCount - a.selectedMatchCount;
       return a.item.songTitle.localeCompare(b.item.songTitle, "ko");
     });
+  // 연도 탭: 최신 연도부터
+  const [yearTab, setYearTab] = useState("all");
+  const archiveYearTabs = Array.from(new Set(data.archiveSongs.flatMap(archiveYears))).sort((a, b) => b - a);
+  const visibleArchives = yearTab === "all" ? scoredArchives : scoredArchives.filter(({ item }) => archiveYears(item).includes(Number(yearTab)));
 
   function beginMerge(itemId: string) {
     setMergeBaseId(itemId);
@@ -243,10 +247,11 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
           </div>
         </Panel>
       )}
-      <Panel title={`이력 목록 ${scoredArchives.length}개`}>
+      <Tabs tabs={[["all", "전체"], ...archiveYearTabs.map((year) => [String(year), `${String(year).slice(2)}년`] as const)]} value={yearTab} onChange={setYearTab} />
+      <Panel title={`이력 목록 ${visibleArchives.length}개`}>
         <div className="grid gap-3">
-          {scoredArchives.length === 0 && <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>}
-          {scoredArchives.map(({ item, selectedMatchCount }) => {
+          {visibleArchives.length === 0 && <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>}
+          {visibleArchives.map(({ item, selectedMatchCount }) => {
             const team = data.teams.find((teamItem) => teamItem.id === item.teamId);
             return (
               <SwipeActions key={item.id} onEdit={() => beginArchiveEdit(item)} onDelete={() => deleteArchive(item)}>

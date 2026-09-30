@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { currentTerm, nowIso, previousTerm, termLabel } from "@/lib/format";
 import { createAudit, fixSongLeaders } from "@/lib/local-data";
 import { canManageTeams, canManageUsers, roleLabel } from "@/lib/permissions";
-import { alpha, defaultAccent, fixedTeamColors, palette, teamColor } from "@/lib/schedule";
+import { alpha, defaultAccent, fixedTeamColors, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Role, Team } from "@/types/domain";
-import { DataList, Field, Panel, PrimaryButton, Select } from "@/components/ui";
+import { DataList, Field, Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
 
 const roleOptions: Role[] = ["SUPER_ADMIN", "VICE_ADMIN", "TREASURER", "TEAM_ADMIN", "USER"];
 
@@ -18,6 +18,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
   const [selectedTerm, setSelectedTerm] = useState(currentTerm());
   const [selectedUserId, setSelectedUserId] = useState(data.users[0]?.id ?? "");
   const [showAllMembers, setShowAllMembers] = useState(false);
+  const [tab, setTab] = useState<"list" | "create" | "teams">("list");
   const termOptions = Array.from(new Set([...data.users.flatMap(termsOf), currentTerm()])).sort();
   const usersByTerm = data.users.filter((user) => termsOf(user).includes(selectedTerm));
   const prevTerm = previousTerm(selectedTerm);
@@ -94,12 +95,14 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
     setForm({ name: "", teamId: data.teams[0]?.id ?? "", role: "USER" });
     setSelectedUserId(user.id);
     if (data.users.length >= 5) setShowAllMembers(true);
+    setTab("list");
   }
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-      <div className="order-2 space-y-4 xl:order-none">
-        <Panel title="소속 팀 만들기">
+    <section className="space-y-4">
+      <Tabs tabs={[["list", "멤버 목록"], ["create", "멤버 추가"], ["teams", "소속 팀"]]} value={tab} onChange={setTab} />
+      {tab === "teams" && (
+        <Panel title="소속 팀">
           <Field label="팀 이름" value={teamName} onChange={setTeamName} />
           <PrimaryButton className="mt-3" disabled={!canManageTeams(currentUser.role)} onClick={addTeam}>생성</PrimaryButton>
           <div className="mt-4 space-y-2">
@@ -114,7 +117,9 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
             })}
           </div>
         </Panel>
-        <Panel title="멤버 생성">
+      )}
+      {tab === "create" && (
+        <Panel title="멤버 추가">
           <div className="space-y-3">
             <Field label="이름" value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
             <Select label="소속 팀" value={form.teamId} onChange={(value) => setForm({ ...form, teamId: value })} options={data.teams.map((team) => [team.id, team.name])} />
@@ -122,8 +127,9 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
             <PrimaryButton onClick={createUser} disabled={!allowed} icon={<Plus size={17} />}>생성</PrimaryButton>
           </div>
         </Panel>
-      </div>
-      <div className="order-1 space-y-4 xl:order-none">
+      )}
+      {tab === "list" && (
+      <div className="space-y-4">
         <Panel title="멤버 목록">
           <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
             {termOptions.map((term) => {
@@ -206,6 +212,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
         </Panel>
         {selectedUser && <MemberDetailPanel data={data} user={selectedUser} termOptions={termOptions} canEditRole={currentUser.role === "SUPER_ADMIN"} persist={persist} />}
       </div>
+      )}
     </section>
   );
 }
@@ -213,7 +220,11 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
 function MemberDetailPanel({ data, user, termOptions, canEditRole, persist }: { data: AppData; user: ClubUser; termOptions: string[]; canEditRole: boolean; persist: (data: AppData) => void }) {
   const [form, setForm] = useState({ name: user.name, teamId: user.teamId ?? "", role: user.role, activeTerms: termsOf(user) });
   const joinedSongIds = data.songMembers.filter((member) => member.userId === user.id).map((member) => member.songId);
-  const joinedSongs = data.songs.filter((song) => joinedSongIds.includes(song.id));
+  // 끝나지 않은 공연의 곡만. 지난 곡은 과거 공연 이력에서 본다.
+  const joinedSongs = data.songs.filter((song) => {
+    const performance = data.performances.find((item) => item.id === song.performanceId);
+    return joinedSongIds.includes(song.id) && Boolean(performance) && !isPastPerformance(performance!);
+  });
 
   useEffect(() => {
     setForm({ name: user.name, teamId: user.teamId ?? "", role: user.role, activeTerms: termsOf(user) });

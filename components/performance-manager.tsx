@@ -6,12 +6,13 @@ import { alpha, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
-import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, TextArea } from "@/components/ui";
+import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs, TextArea } from "@/components/ui";
 
 export function PerformanceManager({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = data.performances.find((item) => item.id === selectedId) ?? null;
   const detailRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<"list" | "create">("list");
   useEffect(() => {
     if (selectedId) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selectedId]);
@@ -49,6 +50,7 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
     };
     persist({ ...data, performances: [...data.performances, performance], schedules: [...data.schedules, schedule], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_PERFORMANCE", "performances", performance.id, performance)] });
     setPerf({ title: "", startsAt: `${today()}T19:00`, endsAt: `${today()}T21:00`, location: "" });
+    setTab("list");
   }
 
   const upcoming = data.performances.filter((performance) => !isPastPerformance(performance)).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -61,9 +63,10 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
   );
 
   return (
-    <section className="space-y-5">
-      <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
-        <Panel title="공연 만들기" className="order-2 xl:order-none">
+    <section className="space-y-4">
+      <Tabs tabs={[["list", "공연 목록"], ["create", "공연 만들기"]]} value={tab} onChange={setTab} />
+      {tab === "create" && (
+        <Panel title="공연 만들기">
           <div className="space-y-3">
             <Field label="공연명" value={perf.title} onChange={(value) => setPerf({ ...perf, title: value })} />
             <Field label="시작" type="datetime-local" value={perf.startsAt} onChange={(value) => setPerf({ ...perf, startsAt: value })} />
@@ -72,7 +75,9 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
             <PrimaryButton onClick={addPerformance}>생성</PrimaryButton>
           </div>
         </Panel>
-        <Panel title="공연 목록" className="order-1 xl:order-none">
+      )}
+      {tab === "list" && (
+        <Panel title="공연 목록">
           {upcoming.length === 0 && <p className="text-sm text-muted-foreground">예정된 공연이 없습니다.</p>}
           <div className="grid gap-3 md:grid-cols-2">{upcoming.map(performanceCard)}</div>
           {past.length > 0 && (
@@ -82,7 +87,7 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
             </details>
           )}
         </Panel>
-      </div>
+      )}
       <div ref={detailRef} className="scroll-mt-20">
         {selected && <PerformanceDetail key={selected.id} data={data} currentUser={currentUser} performance={selected} persist={persist} />}
       </div>
@@ -171,6 +176,10 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
 
   const infoDraft = () => ({ title: performance.title, startsAt: toDatetimeLocal(performance.startsAt), endsAt: toDatetimeLocal(performance.endsAt), location: performance.location ?? "" });
   const [editingInfo, setEditingInfo] = useState(false);
+  const [detailTab, setDetailTab] = useState<"songs" | "create" | "members" | "notice">("songs");
+  const [focusMemberId, setFocusMemberId] = useState("");
+  const focusMember = performanceMembers.find((user) => user.id === focusMemberId);
+  const focusSongs = songs.filter((song) => data.songMembers.some((member) => member.songId === song.id && member.userId === focusMemberId));
   const [infoForm, setInfoForm] = useState(infoDraft);
 
   // 공연명/시간/장소를 바꾸면 캘린더의 공연 일정도 같이 바꾼다.
@@ -318,6 +327,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     setSongDuration("");
     setSongMemberIds([]);
     setLeaderIds([]);
+    setDetailTab("songs");
   }
 
   function startEditSong(song: Song) {
@@ -385,14 +395,35 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           </div>
         )}
       </div>
-      <div className="grid gap-5 xl:grid-cols-3">
-        <Panel title="공연 참여 인원" className="p-3 shadow-none sm:p-6">
+      <Tabs className="mb-3" tabs={[["songs", `곡 팀 ${songs.length}`], ["create", "팀 만들기"], ["members", `참여 인원 ${performanceMembers.length}`], ["notice", "공지"]]} value={detailTab} onChange={setDetailTab} />
+      {detailTab === "members" && (
+        <Panel title="공연 참여 인원" className="bg-background p-3 sm:p-6">
           {!editingMembers ? (
             <div className="space-y-4">
               <div className="flex min-h-24 flex-wrap content-start gap-2">
                 {performanceMembers.length === 0 && <p className="text-sm text-muted-foreground">아직 지정된 참여 인원이 없습니다.</p>}
-                {performanceMembers.map((user) => <UserPill key={user.id} user={user} data={data} />)}
+                {performanceMembers.map((user) => (
+                  <button key={user.id} type="button" className={cn("rounded-full", focusMemberId === user.id && "ring-2 ring-foreground")} onClick={() => setFocusMemberId(focusMemberId === user.id ? "" : user.id)}>
+                    <UserPill user={user} data={data} />
+                  </button>
+                ))}
               </div>
+              {focusMember && (
+                <div className="rounded-2xl bg-card p-3 text-sm">
+                  <p className="mb-2 font-semibold">{focusMember.name} 참여 곡</p>
+                  {focusSongs.length === 0 ? (
+                    <p className="text-muted-foreground">이 공연에서 참여하는 곡이 없습니다.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {focusSongs.map((song) => (
+                        <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-900" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)) }}>
+                          {song.title}{song.leaderUserId === focusMember.id && " (곡팀장)"}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <PrimaryButton onClick={() => { setDraftMemberIds(performanceMemberIds); setEditingMembers(true); }}>지정하기</PrimaryButton>
             </div>
           ) : (
@@ -424,7 +455,9 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             </div>
           )}
         </Panel>
-        <Panel title="곡 팀 만들기" className="p-3 shadow-none sm:p-6">
+      )}
+      {detailTab === "create" && (
+        <Panel title="곡 팀 만들기" className="bg-background p-3 sm:p-6">
           <div className="space-y-3">
             <Select label="소속 팀" value={songTeamId} onChange={setSongTeamId} options={data.teams.map((team) => [team.id, team.name])} />
             <Field label="곡 / 무대 이름" value={songTitle} onChange={setSongTitle} />
@@ -479,7 +512,9 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             <PrimaryButton onClick={addSong} disabled={!songTitle.trim() || songMemberIds.length === 0 || leaderIds.length === 0}>곡 팀 만들기</PrimaryButton>
           </div>
         </Panel>
-        <Panel title="공연 상세 공지" className="p-3 shadow-none sm:p-6">
+      )}
+      {detailTab === "notice" && (
+        <Panel title="공연 상세 공지" className="bg-background p-3 sm:p-6">
           <div className="space-y-3">
             <TextArea label="공연 설명 / 운영 메모" value={description} onChange={setDescription} />
             <PrimaryButton onClick={() => updatePerformance({ description })}>설명 저장</PrimaryButton>
@@ -487,8 +522,9 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             <PrimaryButton onClick={addPerformanceNotice}>공지 추가</PrimaryButton>
           </div>
         </Panel>
-      </div>
-      <Panel title="생성된 공연 곡" className="mt-5 p-3 shadow-none sm:p-6">
+      )}
+      {detailTab === "songs" && (
+      <Panel title="생성된 공연 곡" className="bg-background p-3 sm:p-6">
         <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
@@ -681,6 +717,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           })}
         </div>
       </Panel>
+      )}
     </Panel>
   );
 }

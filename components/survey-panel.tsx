@@ -5,7 +5,7 @@ import { uid } from "@/lib/utils";
 import type { AppData, AvailabilityResponse, ClubUser, PracticeCandidate, ScheduleSurvey, Song } from "@/types/domain";
 import { DayTimeline, describeConflict, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
 import { AvailabilityBreakdown, AvailabilityGrid, formatSlotDate, LocationField } from "@/components/slot-grid";
-import { Panel, PrimaryButton, Select } from "@/components/ui";
+import { Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
 
 type PanelProps = { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void };
 
@@ -47,6 +47,7 @@ export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
   const leaderSurveys = data.surveys.filter((item) => item.status === "OPEN" && surveySongIds(item, data).some((songId) => myLeaderSongIds.includes(songId))).reverse();
   const [survey, setSurveyId] = useSurveyChoice(leaderSurveys);
   const [songId, setSongId] = useState("");
+  const [leaderTab, setLeaderTab] = useState<"send" | "overlap">("send");
 
   if (!survey) return <Panel title="곡팀장"><p className="text-sm text-muted-foreground">내 곡이 포함된 진행 중인 조사가 없습니다.</p></Panel>;
 
@@ -57,7 +58,8 @@ export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
   return (
     <section className="space-y-4">
       <SurveyPicker surveys={leaderSurveys} survey={survey} onChange={setSurveyId} />
-      {song && (
+      <Tabs tabs={[["send", "희망 시간 보내기"], ["overlap", "겹침 현황"]]} value={leaderTab} onChange={setLeaderTab} />
+      {song && leaderTab === "send" && (
         <Panel title="희망 연습 시간 보내기">
           <div className="space-y-4">
             {leaderSongs.length > 1 && <Select label="팀장인 곡" value={song.id} onChange={setSongId} options={leaderSongs.map((item) => [item.id, item.title])} />}
@@ -65,7 +67,7 @@ export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
           </div>
         </Panel>
       )}
-      <OverlapOverview key={`overlap-${survey.id}`} survey={survey} data={data} leaderSongIds={leaderSongs.map((item) => item.id)} />
+      {leaderTab === "overlap" && <OverlapOverview key={`overlap-${survey.id}`} survey={survey} data={data} leaderSongIds={leaderSongs.map((item) => item.id)} />}
     </section>
   );
 }

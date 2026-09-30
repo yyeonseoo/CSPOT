@@ -6,13 +6,14 @@ import { eventColor, getVisibleSchedules } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Schedule, PracticeCandidate } from "@/types/domain";
 import { CalendarEventPill, NoticeCard, ScheduleRow } from "@/components/items";
-import { Field, IconButton, Panel, PrimaryButton } from "@/components/ui";
+import { Field, IconButton, Panel, PrimaryButton, Tabs } from "@/components/ui";
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
 export function CalendarPanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   const [month, setMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(today());
+  const [calTab, setCalTab] = useState<"calendar" | "upcoming" | "notice">("calendar");
   const [showCreate, setShowCreate] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState({ title: "", startsAt: "", endsAt: "" });
@@ -99,8 +100,10 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
   }
 
   return (
+    <div className="space-y-3">
+    <Tabs className="xl:hidden" tabs={[["calendar", "달력"], ["upcoming", `다가오는 일정 ${upcomingAll.length}`], ["notice", "공지"]]} value={calTab} onChange={setCalTab} />
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
-      <section className="rounded-3xl bg-card p-3 sm:p-5">
+      <section className={cn("rounded-3xl bg-card p-3 sm:p-5", calTab !== "calendar" && "hidden xl:block")}>
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-lg font-bold sm:text-xl">{monthTitle(month)}</h3>
           <div className="flex items-center gap-1.5">
@@ -149,7 +152,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
       </section>
 
       <aside className="space-y-5">
-        <Panel title={`${Number(selectedDate.slice(5, 7))}월 ${Number(selectedDate.slice(8))}일 일정`}>
+        <Panel title={`${Number(selectedDate.slice(5, 7))}월 ${Number(selectedDate.slice(8))}일 일정`} className={calTab !== "calendar" ? "hidden xl:block" : ""}>
           <div className="mb-4 space-y-2">
             {selectedEvents.length === 0 && <p className="text-sm text-muted-foreground">이 날짜에 등록된 일정이 없습니다.</p>}
             {selectedEvents.map((schedule) => (
@@ -187,7 +190,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
             </div>
           )}
         </Panel>
-        <Panel title="다가오는 일정">
+        <Panel title="다가오는 일정" className={calTab !== "upcoming" ? "hidden xl:block" : ""}>
           <div className="space-y-3">
             {upcoming.length === 0 && <p className="text-sm text-muted-foreground">다가오는 일정이 없습니다.</p>}
             {upcoming.map((schedule) => <ScheduleRow key={schedule.id} schedule={schedule} data={data} currentUser={currentUser} />)}
@@ -198,8 +201,9 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
             </button>
           )}
         </Panel>
-        <Panel title="고정 공지"><div className="space-y-3">{pinned.map((notice) => <NoticeCard key={notice.id} notice={notice} />)}</div></Panel>
+        <Panel title="고정 공지" className={calTab !== "notice" ? "hidden xl:block" : ""}><div className="space-y-3">{pinned.map((notice) => <NoticeCard key={notice.id} notice={notice} />)}</div></Panel>
       </aside>
+    </div>
     </div>
   );
 }

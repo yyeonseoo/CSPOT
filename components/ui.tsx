@@ -216,3 +216,23 @@ export function IconButton({ children, label, onClick }: { children: React.React
 export function segmentClass(active: boolean) {
   return cn("rounded-full px-3 py-2 text-sm font-medium transition", active ? "bg-primary text-primary-foreground" : "text-muted-foreground");
 }
+
+// 화면이 길어지는 곳을 나누는 알약 탭
+export function Tabs<T extends string>({ tabs, value, onChange, className }: { tabs: Array<readonly [T, string]>; value: T; onChange: (value: T) => void; className?: string }) {
+  return (
+    <div role="tablist" className={cn("-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1", className)}>
+      {tabs.map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={value === id}
+          className={cn("shrink-0 rounded-full px-4 py-2 text-sm font-medium transition", value === id ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}
+          onClick={() => onChange(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}

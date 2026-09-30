@@ -7,7 +7,7 @@ import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
 import { describeConflict, DayTimeline, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
 import { AvailabilityBreakdown, formatSlotDate, LocationField } from "@/components/slot-grid";
-import { Field, Panel, PrimaryButton, Select, SoftCheckbox } from "@/components/ui";
+import { Field, Panel, PrimaryButton, Select, SoftCheckbox, Tabs } from "@/components/ui";
 
 const hours = Array.from({ length: 25 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
 const statusLabels = { PENDING: "대기", APPROVED: "확정", REJECTED: "반려" };
@@ -37,6 +37,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
   const [showForm, setShowForm] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [selectedId, setSelectedId] = useState("");
+  const [viewTab, setViewTab] = useState<"grid" | "day">("grid");
   const validForm = form.title.trim() !== "" && form.startDate <= form.endDate && form.timeStart < form.timeEnd && form.performanceIds.length > 0;
   const requests = survey ? surveyRequests(survey, data) : [];
   // 조사 대상으로 고를 수 있는 공연: 아직 끝나지 않은 공연만
@@ -145,7 +146,8 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
             </div>
           ) : surveyForm}
         </Panel>
-        {survey && (
+        {survey && requests.length > 0 && <Tabs tabs={[["grid", "전체 표"], ["day", "날짜별"]]} value={viewTab} onChange={setViewTab} />}
+        {survey && (requests.length === 0 || viewTab === "grid") && (
           <Panel title="팀별 희망 시간">
             {requests.length === 0 ? (
               <p className="text-sm text-muted-foreground">받은 요청이 없습니다.</p>
@@ -154,7 +156,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
             )}
           </Panel>
         )}
-        {survey && requests.length > 0 && (
+        {survey && requests.length > 0 && viewTab === "day" && (
           <Panel title="날짜별 보기">
             <DayTimeline key={survey.id} survey={survey} data={data} requests={requests} selectedId={selectedId} onSelect={setSelectedId} />
           </Panel>
