@@ -1,6 +1,6 @@
 // 실행: npx tsx lib/schedule.check.ts
 import assert from "node:assert/strict";
-import { availabilitySegments, findPracticeConflicts, slotsCovering, getAvailableUserIds, slotsToBlocks, timesBetween } from "./schedule";
+import { activeLeaderSongs, availabilitySegments, findPracticeConflicts, slotsCovering, getAvailableUserIds, slotsToBlocks, timesBetween } from "./schedule";
 import type { AppData, PracticeCandidate, ScheduleSurvey } from "../types/domain";
 import { diffData, rowsToData } from "./remote-data";
 
@@ -62,5 +62,12 @@ const after = { ...before, notices: [{ id: "n1", title: "a" }, { id: "n3", title
 const diff = diffData(before, after);
 assert.deepEqual(diff.upserts.map((row) => row.id), ["n3"]);
 assert.deepEqual(diff.deletes, [{ collection: "notices", id: "n2" }]);
+
+// 곡팀장 권한: 끝난 공연의 곡은 빠진다
+const leaderData = {
+  performances: [{ id: "past", endsAt: "2026-07-03T10:00:00.000Z", status: "ACTIVE" }, { id: "next", endsAt: "2026-11-14T12:00:00.000Z", status: "ACTIVE" }],
+  songs: [{ id: "old", performanceId: "past", leaderUserId: "u" }, { id: "new", performanceId: "next", leaderUserId: "u" }],
+} as unknown as AppData;
+assert.deepEqual(activeLeaderSongs("u", leaderData, "2026-10-01T00:00:00.000Z").map((song) => song.id), ["new"]);
 
 console.log("schedule checks passed");

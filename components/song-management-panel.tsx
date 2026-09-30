@@ -1,10 +1,10 @@
 import { ChevronLeft, Check, X } from "lucide-react";
 import { useState } from "react";
-import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, toDateKey, today } from "@/lib/format";
+import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, today } from "@/lib/format";
 import { createAudit } from "@/lib/local-data";
-import { candidateBlock, findPracticeConflicts, getSongUserIds, getSurveyTimes, slotKey, slotsCovering, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
+import { candidateBlock, findPracticeConflicts, getSongUserIds, slotKey, slotsCovering, surveyLabel, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
-import type { AppData, AvailabilityResponse, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
+import type { AppData, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
 import { describeConflict, DayTimeline, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
 import { AvailabilityBreakdown, formatSlotDate, LocationField } from "@/components/slot-grid";
 import { Field, Panel, PrimaryButton, Select, SoftCheckbox } from "@/components/ui";
@@ -67,57 +67,6 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
     setSurveyId(next.id);
     setShowForm(false);
     setForm({ ...form, title: "", performanceIds: [] });
-    closeSheet();
-  }
-
-  // ponytail: 테스트용 더미 데이터. 관리자 화면 확인용이라 배포 전에 아래 버튼과 함께 삭제.
-  function fillDummyData() {
-    const createdAt = nowIso();
-    const weekLater = new Date();
-    weekLater.setDate(weekLater.getDate() + 6);
-    const target: ScheduleSurvey = survey ?? { id: uid("survey"), title: "테스트 조사", performanceIds: [], createdBy: currentUser.id, startDate: today(), endDate: toDateKey(weekLater), timeStart: "18:00", timeEnd: "23:00", slotMinutes: 30, status: "OPEN", createdAt, updatedAt: createdAt };
-    const dates = getDateRange(target.startDate, target.endDate);
-    const times = getSurveyTimes(target);
-    const pick = (max: number) => Math.floor(Math.random() * max);
-    const clampIndex = (index: number, length = 1) => Math.max(0, Math.min(times.length - length, index));
-    // 실제처럼 저녁 7시 전후로 몰리게 한다.
-    const evening = times.includes("19:00") ? times.indexOf("19:00") : Math.floor(times.length / 2);
-    // 팀원 응답: 35%는 그날 불가, 나머지는 저녁 시간 일부만 가능, 가끔 중간에 빠지는 시간이 있음
-    const targetSongIds = surveySongIds(target, data);
-    const dummySongs = data.songs.filter((song) => targetSongIds.includes(song.id) && data.teams.find((team) => team.id === song.teamId)?.name !== "랩");
-    const dummySongIds = new Set(dummySongs.map((song) => song.id));
-    const responses: AvailabilityResponse[] = Array.from(new Set(data.songMembers.filter((member) => dummySongIds.has(member.songId)).map((member) => member.userId))).map((userId) => ({
-      id: uid("availability"),
-      surveyId: target.id,
-      userId,
-      slots: dates.flatMap((date) => {
-        const busy = Math.random() < 0.35;
-        const from = clampIndex(evening - 2 + pick(4));
-        const to = from + 2 + pick(6);
-        const gap = Math.random() < 0.25 ? from + 1 + pick(3) : -1;
-        return times.map((time, index) => ({ date, time, available: !busy && index >= from && index < to && index !== gap }));
-      }),
-      submittedAt: createdAt,
-      updatedAt: createdAt,
-    }));
-    // 곡팀장 요청: 앞쪽 며칠의 저녁에 몰리고 대부분 수련관을 원해서 팀끼리 자주 겹친다.
-    const busyDates = dates.slice(0, Math.min(4, dates.length));
-    const dummyRequests: PracticeCandidate[] = dummySongs.flatMap((song) => {
-      const songDates = [...busyDates].sort(() => Math.random() - 0.5).slice(0, 2);
-      return songDates.map((date) => {
-        const length = Math.min(times.length, 3 + pick(2));
-        const start = times[clampIndex(evening - 1 + pick(3), length)];
-        const roll = Math.random();
-        const location = roll < 0.7 ? "수련관" : roll < 0.9 ? "외부 대관" : "학생회관 연습실";
-        return { id: uid("candidate"), performanceId: song.performanceId, songId: song.id, surveyId: target.id, proposedBy: song.leaderUserId, startsAt: makeLocalIso(date, start), endsAt: makeLocalIso(date, minutesToTime(timeToMinutes(start) + length * target.slotMinutes)), location, status: "PENDING" as const, createdAt, updatedAt: createdAt };
-      });
-    });
-    persist({
-      ...data,
-      surveys: survey ? data.surveys : [...data.surveys, target],
-      availabilityResponses: [...data.availabilityResponses.filter((response) => response.surveyId !== target.id), ...responses],
-      practiceCandidates: [...data.practiceCandidates.filter((candidate) => !(candidate.surveyId === target.id && candidate.status === "PENDING")), ...dummyRequests],
-    });
     closeSheet();
   }
 
@@ -193,7 +142,6 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
               {showForm && surveyForm}
             </div>
           ) : surveyForm}
-          {process.env.NODE_ENV !== "production" && <button type="button" className="mt-2 w-full rounded-full border border-dashed border-muted-foreground/40 px-4 py-2.5 text-sm font-medium text-muted-foreground" onClick={fillDummyData}>테스트: 더미 데이터 채우기</button>}
         </Panel>
         {survey && (
           <Panel title="팀별 희망 시간">

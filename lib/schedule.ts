@@ -113,6 +113,15 @@ export function surveyLabel(survey: ScheduleSurvey) {
   return `${survey.title} (${range})${survey.status === "OPEN" ? "" : " (마감)"}`;
 }
 
+// 곡팀장 권한은 끝나지 않은 공연의 곡에만 준다. 공연이 끝나면 그 곡의 곡팀장 탭도 사라진다.
+export function activeLeaderSongs(userId: string, data: AppData, now = new Date().toISOString()) {
+  return data.songs.filter((song) => {
+    if (song.leaderUserId !== userId) return false;
+    const performance = data.performances.find((item) => item.id === song.performanceId);
+    return Boolean(performance) && performance!.endsAt >= now && performance!.status !== "COMPLETED" && performance!.status !== "CANCELED";
+  });
+}
+
 export function getSongUserIds(songId: string, data: AppData) {
   return data.songMembers.filter((member) => member.songId === songId).map((member) => member.userId);
 }

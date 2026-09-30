@@ -1,6 +1,7 @@
 import { Archive, CalendarDays, ClipboardList, LogOut, Megaphone, Menu, Moon, Music2, Settings, Sun, Users, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { isAdminRole, roleLabel } from "@/lib/permissions";
+import { activeLeaderSongs } from "@/lib/schedule";
 import type { Portal } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
@@ -24,7 +25,6 @@ export function AppShell({
   logout,
   dark,
   toggleTheme,
-  switchSession,
 }: {
   data: AppData;
   currentUser: ClubUser;
@@ -33,12 +33,10 @@ export function AppShell({
   logout: () => void;
   dark: boolean;
   toggleTheme: () => void;
-  switchSession: (userId: string, portal: Portal) => void;
 }) {
   const adminMode = portal === "admin" && isAdminRole(currentUser.role);
   const [view, setView] = useState("calendar");
   const [menuOpen, setMenuOpen] = useState(false);
-  const leaderIds = new Set(data.songs.map((song) => song.leaderUserId));
   const nav: NavItem[] = adminMode
     ? [
         ["calendar", "캘린더", CalendarDays],
@@ -54,7 +52,7 @@ export function AppShell({
         ["calendar", "캘린더", CalendarDays],
         ["surveys", "조사", ClipboardList],
         // 곡팀장인 사람에게만 보이는 탭
-        ...(leaderIds.has(currentUser.id) ? [["leader", "곡팀장", Music2] as NavItem] : []),
+        ...(activeLeaderSongs(currentUser.id, data).length > 0 ? [["leader", "곡팀장", Music2] as NavItem] : []),
         ["notices-user", "공지", Megaphone],
         ["mypage", "마이", Settings],
       ];
@@ -89,7 +87,7 @@ export function AppShell({
         </nav>
       </aside>
 
-      <section className="pb-20 md:ml-64">
+      <section className="pb-6 md:ml-64">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-background/95 px-4 pb-2 pt-3 sm:px-7">
           <div className="flex min-w-0 items-center gap-2">
             <button className="rounded-xl p-2 hover:bg-muted md:hidden" onClick={() => setMenuOpen(true)} aria-label="메뉴 열기">
@@ -127,30 +125,6 @@ export function AppShell({
         </div>
       </section>
 
-      {/* 테스트용 계정 전환 바. 비밀번호 없이 아무 계정으로나 들어가므로 개발 서버(npm run dev)에서만 보인다. */}
-      {process.env.NODE_ENV !== "production" && (
-      <label className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-border bg-background px-3 py-2 text-xs font-semibold md:left-64 dark:border-border">
-        <span className="shrink-0 text-muted-foreground">테스트 계정</span>
-        <select
-          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-base font-medium dark:border-border"
-          value={`${currentUser.id}|${adminMode ? "admin" : "user"}`}
-          onChange={(event) => {
-            const [userId, nextPortal] = event.target.value.split("|");
-            switchSession(userId, nextPortal as Portal);
-          }}
-        >
-          <optgroup label="관리자">
-            {data.users.filter((user) => isAdminRole(user.role)).map((user) => <option key={user.id} value={`${user.id}|admin`}>{user.name} ({roleLabel(user.role)})</option>)}
-          </optgroup>
-          <optgroup label="곡팀장">
-            {data.users.filter((user) => leaderIds.has(user.id)).map((user) => <option key={user.id} value={`${user.id}|user`}>{user.name} ({data.songs.filter((song) => song.leaderUserId === user.id).map((song) => song.title).join(", ")})</option>)}
-          </optgroup>
-          <optgroup label="일반 팀원">
-            {data.users.filter((user) => !leaderIds.has(user.id)).map((user) => <option key={user.id} value={`${user.id}|user`}>{user.name}</option>)}
-          </optgroup>
-        </select>
-      </label>
-      )}
     </main>
   );
 }

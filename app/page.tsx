@@ -113,12 +113,6 @@ export default function HomePage() {
     return null;
   }
 
-  function switchSession(userId: string, portal: Portal) {
-    const nextSession = { userId, portal };
-    writeSession(nextSession);
-    setSession(nextSession);
-  }
-
   function logout() {
     window.localStorage.removeItem(SESSION_KEY);
     setSession(null);
@@ -160,7 +154,6 @@ export default function HomePage() {
       {banner}
       <AppShell
         key={`${currentUser.id}-${session?.portal}`}
-        switchSession={switchSession}
         data={data}
         currentUser={currentUser}
         portal={session?.portal ?? "user"}

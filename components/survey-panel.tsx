@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getDateRange, makeLocalIso, nowIso } from "@/lib/format";
-import { candidateBlock, findPracticeConflicts, getSongUserIds, getSurveyHeatmap, getSurveyTimes, slotKey, slotsToBlocks, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
+import { activeLeaderSongs, candidateBlock, findPracticeConflicts, getSongUserIds, getSurveyHeatmap, getSurveyTimes, slotKey, slotsToBlocks, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { uid } from "@/lib/utils";
 import type { AppData, AvailabilityResponse, ClubUser, PracticeCandidate, ScheduleSurvey, Song } from "@/types/domain";
 import { DayTimeline, describeConflict, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
@@ -43,7 +43,7 @@ export function SurveyPanel({ data, currentUser, persist }: PanelProps) {
 
 // 곡팀장 탭: 내가 팀장인 곡이 들어 있는 조사에서 희망 시간 전송, 겹침 현황 확인
 export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
-  const myLeaderSongIds = data.songs.filter((item) => item.leaderUserId === currentUser.id).map((item) => item.id);
+  const myLeaderSongIds = activeLeaderSongs(currentUser.id, data).map((item) => item.id);
   const leaderSurveys = data.surveys.filter((item) => item.status === "OPEN" && surveySongIds(item, data).some((songId) => myLeaderSongIds.includes(songId))).reverse();
   const [survey, setSurveyId] = useSurveyChoice(leaderSurveys);
   const [songId, setSongId] = useState("");
