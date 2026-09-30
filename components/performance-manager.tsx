@@ -634,6 +634,10 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     <div className="mt-3 flex flex-wrap gap-2">
                       {members.map((user) => <UserPill key={user.id} user={user} data={data} />)}
                     </div>
+                    <div className="mt-3 flex gap-2" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                      <button type="button" className="rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" onClick={() => startEditSong(song)}>팀 수정</button>
+                      <button type="button" className="rounded-full bg-white/80 px-4 py-1.5 text-xs font-semibold text-neutral-900" onClick={() => deleteSong(song.id)}>삭제</button>
+                    </div>
                   </div>
                 </SwipeActions>
               );
