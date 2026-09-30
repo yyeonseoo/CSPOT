@@ -197,10 +197,6 @@ export function SwipeActions({ children, onEdit, onDelete }: { children: React.R
   );
 }
 
-export function TwoColumn({ children }: { children: React.ReactNode }) {
-  return <section className="grid gap-5 xl:grid-cols-[380px_1fr]">{children}</section>;
-}
-
 export function DataList({ title, items }: { title: string; items: Array<{ id: string; title: string; meta: string }> }) {
   return <Panel title={title}><div className="divide-y divide-border">{items.length === 0 && <p className="text-sm text-muted-foreground">표시할 항목이 없습니다.</p>}{items.map((item) => <div key={item.id} className="py-3 first:pt-0 last:pb-0"><p className="font-semibold">{item.title}</p><p className="mt-0.5 text-sm leading-6 text-muted-foreground">{item.meta}</p></div>)}</div></Panel>;
 }
