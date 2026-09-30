@@ -19,7 +19,8 @@ for (let index = 0; index < rows.length; index += 500) {
     method: "POST",
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      // 새 secret 키(sb_secret_...)는 apikey 헤더만, 예전 service_role 키는 Authorization도 필요
+      ...(SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_") ? {} : { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }),
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=minimal",
     },

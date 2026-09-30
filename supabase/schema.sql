@@ -11,3 +11,7 @@ create table if not exists public.records (
 -- 정책을 하나도 만들지 않으므로 공개(anon) 키로는 읽기/쓰기가 모두 막힌다.
 -- 앱 서버(app/api/data)만 service role 키로 접근하고, 동아리 코드를 확인한 요청만 통과시킨다.
 alter table public.records enable row level security;
+
+-- 프로젝트를 만들 때 "Automatically expose new tables"를 껐어도 서버가 쓸 수 있도록 권한을 직접 준다.
+revoke all on public.records from anon, authenticated;
+grant select, insert, update, delete on public.records to service_role;

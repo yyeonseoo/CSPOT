@@ -10,7 +10,9 @@ const CLUB_CODE = process.env.CLUB_CODE;
 const PAGE = 1000;
 
 function supabaseHeaders(extra: Record<string, string> = {}) {
-  return { apikey: SERVICE_KEY!, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", ...extra };
+  // 새 secret 키(sb_secret_...)는 apikey 헤더로만, 예전 service_role 키(JWT)는 Authorization에도 넣는다.
+  const auth: Record<string, string> = SERVICE_KEY!.startsWith("sb_") ? {} : { Authorization: `Bearer ${SERVICE_KEY}` };
+  return { apikey: SERVICE_KEY!, ...auth, "Content-Type": "application/json", ...extra };
 }
 
 function deny(request: NextRequest) {
