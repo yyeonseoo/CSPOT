@@ -5,7 +5,7 @@ export const STORAGE_KEY = "club-scheduler-local-data-v4";
 export const SESSION_KEY = "club-scheduler-session-v4";
 const SEED_VERSION_KEY = "club-scheduler-seed-version";
 // 하드코딩된 이력/곡 데이터를 바꾸면 이 값을 올려야 기존 로컬 데이터에 한 번 다시 반영된다.
-const SEED_VERSION = "1";
+const SEED_VERSION = "2";
 
 const now = () => new Date().toISOString();
 const danceTeamColor = "#7BC7F2";
@@ -193,7 +193,54 @@ function applySeedData(data: AppData): AppData {
   );
   const currentRapData = withCurrentRap515Day(normalizeMemberAliases(completedArchiveData));
   const currentArchiveData = syncCurrentSongsToArchive(currentRapData);
-  return { ...currentArchiveData, archiveSongs: dedupeArchiveSongs(currentArchiveData.archiveSongs) };
+  return mergeSimilarArchiveSongs({ ...currentArchiveData, archiveSongs: dedupeArchiveSongs(currentArchiveData.archiveSongs) });
+}
+
+function normalizeArchiveTitle(title: string) {
+  return title.toLowerCase().replace(/\*?\(?창작\)?/g, "").replace(/[^a-z0-9가-힣]/g, "");
+}
+
+// 곡명이 같거나 한쪽이 다른 쪽을 포함하고(메들리 일부 등), 인원이 같거나 한 명만 더 있으면 같은 곡으로 본다.
+function isSameArchiveSong(a: ArchiveSong, b: ArchiveSong) {
+  const titleA = normalizeArchiveTitle(a.songTitle);
+  const titleB = normalizeArchiveTitle(b.songTitle);
+  if (!titleA || !titleB || !(titleA.includes(titleB) || titleB.includes(titleA))) return false;
+  if (a.teamId !== b.teamId) return false;
+  const [small, large] = a.memberNames.length <= b.memberNames.length ? [a.memberNames, b.memberNames] : [b.memberNames, a.memberNames];
+  const largeSet = new Set(large);
+  return small.every((name) => largeSet.has(name)) && large.length - small.length <= 1;
+}
+
+export function mergeArchiveItems(items: ArchiveSong[], songs: Song[]): ArchiveSong {
+  const [primary] = items;
+  const unique = <T,>(values: T[]) => Array.from(new Set(values));
+  const linkedCurrentSongIds = unique(items.flatMap((item) => {
+    const directCurrentSong = songs.find((song) => item.archiveKey === `current-${song.performanceId}-${song.id}`);
+    return [...(item.linkedCurrentSongIds ?? []), ...(directCurrentSong ? [directCurrentSong.id] : [])];
+  }));
+  const years = unique(items.flatMap(archiveYears)).sort();
+  return {
+    ...primary,
+    archiveKey: primary.archiveKey.startsWith("current-") ? `merged-${primary.id}` : primary.archiveKey,
+    performanceTitle: unique(items.flatMap((item) => item.performanceTitle.split(" · ").map((title) => title.trim()).filter(Boolean))).join(" · "),
+    memberNames: unique(items.flatMap((item) => item.memberNames)),
+    durationSeconds: primary.durationSeconds ?? items.find((item) => item.durationSeconds)?.durationSeconds,
+    linkedCurrentSongIds,
+    years,
+    source: years.length ? years.map((year) => String(year).slice(2)).join(" · ") : primary.source,
+    updatedAt: now(),
+  };
+}
+
+function mergeSimilarArchiveSongs(data: AppData): AppData {
+  const groups: ArchiveSong[][] = [];
+  for (const song of data.archiveSongs) {
+    const group = groups.find((items) => items.some((item) => isSameArchiveSong(item, song)));
+    if (group) group.push(song);
+    else groups.push([song]);
+  }
+  if (groups.length === data.archiveSongs.length) return data;
+  return { ...data, archiveSongs: groups.map((items) => items.length === 1 ? items[0] : mergeArchiveItems(items, data.songs)) };
 }
 
 function dedupePracticeCandidates(candidates: AppData["practiceCandidates"]) {

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
-import { archiveYears, createAudit } from "@/lib/local-data";
+import { mergeArchiveItems, createAudit } from "@/lib/local-data";
 import { alpha, archiveSourceLabel, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ArchiveSong, ClubUser, SongMember } from "@/types/domain";
@@ -146,39 +146,14 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
     });
   }
 
-  function splitPerformanceTitles(value: string) {
-    return value.split(" · ").map((title) => title.trim()).filter(Boolean);
-  }
-
   function mergeArchiveSongs() {
     if (!mergeBase || mergeSelectedIds.length === 0) return;
     const selectedIds = new Set([mergeBase.id, ...mergeSelectedIds]);
-    const selectedItems = data.archiveSongs
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => selectedIds.has(item.id))
-      .sort((a, b) => a.index - b.index);
-    const primary = selectedItems[0]?.item;
+    const selectedItems = data.archiveSongs.filter((item) => selectedIds.has(item.id));
+    const primary = selectedItems[0];
     if (!primary) return;
-    const performanceTitle = Array.from(new Set(selectedItems.flatMap(({ item }) => splitPerformanceTitles(item.performanceTitle)))).join(" · ");
-    const memberNames = Array.from(new Set(selectedItems.flatMap(({ item }) => item.memberNames)));
-    const years = Array.from(new Set(selectedItems.flatMap(({ item }) => archiveYears(item)))).sort();
-    const sourceLabels = Array.from(new Set(selectedItems.map(({ item }) => archiveSourceLabel(item))));
-    const sources = Array.from(new Set(selectedItems.map(({ item }) => item.source).filter((source): source is string => Boolean(source))));
-    const linkedCurrentSongIds = Array.from(new Set(selectedItems.flatMap(({ item }) => {
-      const directCurrentSong = data.songs.find((song) => item.archiveKey === `current-${song.performanceId}-${song.id}`);
-      return [...(item.linkedCurrentSongIds ?? []), ...(directCurrentSong ? [directCurrentSong.id] : [])];
-    })));
-    const mergedItem = {
-      ...primary,
-      archiveKey: primary.archiveKey.startsWith("current-") ? `merged-${primary.id}` : primary.archiveKey,
-      performanceTitle,
-      memberNames,
-      linkedCurrentSongIds,
-      years,
-      source: sourceLabels.join(" · ") || sources.join(" · ") || primary.source,
-      updatedAt: nowIso(),
-    };
-    const removableIds = new Set(selectedItems.map(({ item }) => item.id).filter((id) => id !== primary.id));
+    const mergedItem = mergeArchiveItems(selectedItems, data.songs);
+    const removableIds = new Set(selectedItems.map((item) => item.id).filter((id) => id !== primary.id));
     persist({
       ...data,
       archiveSongs: data.archiveSongs.flatMap((item) => {
