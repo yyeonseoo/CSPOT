@@ -135,7 +135,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
                   <span className={cn("mr-1.5 rounded-full px-2 py-0.5 text-xs", survey.status === "OPEN" ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20")}>{survey.status === "OPEN" ? "진행 중" : "마감"}</span>
                   {survey.title}
                   <span className="block text-xs text-muted-foreground">
-                    {survey.startDate.slice(5).replace("-", ".")}~{survey.endDate.slice(5).replace("-", ".")}, {survey.timeStart}~{survey.timeEnd}, 응답 {data.availabilityResponses.filter((response) => response.surveyId === survey.id).length}/{surveyUserIds(survey, data).length}명
+                    {survey.startDate.slice(5).replace("-", ".")}~{survey.endDate.slice(5).replace("-", ".")}, {survey.timeStart}~{survey.timeEnd}<br />응답 {data.availabilityResponses.filter((response) => response.surveyId === survey.id).length}/{surveyUserIds(survey, data).length}명
                   </span>
                   <span className="block text-xs text-muted-foreground">{survey.performanceIds.length ? data.performances.filter((performance) => survey.performanceIds.includes(performance.id)).map((performance) => performance.title).join(", ") : "전체 멤버"}</span>
                 </p>

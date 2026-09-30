@@ -21,7 +21,7 @@ export function SlotGrid({ dates, times, cell, rowHeight = "minmax(16px, auto)",
       <div
         {...gridProps}
         className={cn("grid gap-x-1", gridProps?.className)}
-        style={{ minWidth: 30 + dates.length * 44, gridTemplateColumns: `26px repeat(${dates.length}, minmax(40px, 1fr))`, gridTemplateRows: "auto", gridAutoRows: rowHeight, ...gridProps?.style }}
+        style={{ minWidth: 26 + dates.length * 38, gridTemplateColumns: `24px repeat(${dates.length}, minmax(34px, 1fr))`, gridTemplateRows: "auto", gridAutoRows: rowHeight, ...gridProps?.style }}
       >
         <div />
         {dates.map((date) => (

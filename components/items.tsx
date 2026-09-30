@@ -38,7 +38,7 @@ export function UserPill({ user, data }: { user: ClubUser; data: AppData }) {
   const team = data.teams.find((item) => item.id === user.teamId);
   const color = teamColor(team);
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-neutral-900">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-neutral-900">
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
       {user.name}
     </span>

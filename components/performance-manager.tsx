@@ -492,7 +492,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               </div>
               <div className="grid max-h-44 gap-2 overflow-auto">
                 {filteredSongMembers.map((user) => (
-                  <div key={user.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl bg-background p-2 text-sm">
+                  <div key={user.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 rounded-xl bg-background p-2 text-sm">
                     <UserPill user={user} data={data} />
                     <SoftCheckbox checked={songMemberIds.includes(user.id)} label="참여" onToggle={() => setSongMemberIds((prev) => prev.includes(user.id) ? prev.filter((id) => id !== user.id) : [...prev, user.id])} />
                     <SoftCheckbox
@@ -688,7 +688,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       <p className="mb-2 text-sm font-semibold">팀원 / 곡팀장</p>
                       <div className="grid max-h-56 gap-2 overflow-auto">
                         {performanceMembers.map((user) => (
-                          <div key={user.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl bg-background p-2 text-sm">
+                          <div key={user.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 rounded-xl bg-background p-2 text-sm">
                             <UserPill user={user} data={data} />
                             <SoftCheckbox
                               checked={editSongForm.memberIds.includes(user.id)}
