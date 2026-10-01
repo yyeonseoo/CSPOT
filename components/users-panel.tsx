@@ -171,7 +171,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
           )}
           <div className="mb-4 space-y-2">
             <input
-              className="w-full rounded-xl bg-background px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-xl bg-muted px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-primary/20"
               value={addQuery}
               onChange={(event) => setAddQuery(event.target.value)}
               placeholder="기존 멤버 이름으로 이 학기에 추가"

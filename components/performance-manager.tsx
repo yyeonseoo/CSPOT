@@ -2,7 +2,7 @@ import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
-import { alpha, isPastPerformance, palette, teamColor } from "@/lib/schedule";
+import { alpha, isPastPerformance, palette, teamColor, performanceAccent } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -56,7 +56,7 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
   const upcoming = data.performances.filter((performance) => !isPastPerformance(performance)).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const past = data.performances.filter((performance) => isPastPerformance(performance)).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   const performanceCard = (performance: Performance) => (
-    <button key={performance.id} style={{ backgroundColor: performance.color }} className={cn("rounded-2xl p-4 text-left text-neutral-900 transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
+    <button key={performance.id} style={{ backgroundColor: performanceAccent(performance) }} className={cn("rounded-2xl p-4 text-left text-neutral-900 transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
       <p className="font-semibold">{performance.title}</p>
       <p className="mt-1 text-sm text-neutral-700">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
     </button>
@@ -451,7 +451,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           ) : (
             <div className="space-y-4">
               <input
-                className="w-full rounded-xl bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
                 value={performanceMemberSearch}
                 onChange={(event) => setPerformanceMemberSearch(event.target.value)}
                 placeholder="이름이나 팀으로 검색"
@@ -487,7 +487,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             <div className="rounded-xl bg-muted p-3">
               <p className="mb-3 text-sm font-semibold">팀원 / 곡팀장</p>
               <input
-                className="mb-3 w-full rounded-xl bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+                className="mb-3 w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
                 value={songMemberSearch}
                 onChange={(event) => setSongMemberSearch(event.target.value)}
                 placeholder="이름이나 아이디로 검색"
@@ -590,7 +590,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">
                 시간(초)
                 <input
-                  className="mt-1 w-full rounded-xl bg-background px-3 py-2.5 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                  className="mt-1 w-full rounded-xl bg-muted px-3 py-2.5 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
                   type="number"
                   min="0"
                   inputMode="numeric"

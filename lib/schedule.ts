@@ -2,15 +2,15 @@ import { minutesToTime, timeToMinutes, toDatetimeLocal } from "@/lib/format";
 import { archiveYears } from "@/lib/local-data";
 import type { AppData, ArchiveSong, ClubUser, Performance, PracticeCandidate, Schedule, ScheduleSurvey, Team } from "@/types/domain";
 
-export const defaultAccent = "#A7E3F7";
+export const defaultAccent = "#00E5FF";
 
 export const fixedTeamColors: Record<string, string> = {
-  "춤": "#A7E3F7",
-  "랩": "#C3A6FF",
-  "기획": "#B9F18C",
+  "춤": "#00E5FF",
+  "랩": "#C77DFF",
+  "기획": "#39FF14",
 };
 
-export const palette = ["#A7E3F7", "#F9E765", "#B9F18C", "#F7A1D0", "#C3A6FF", "#FFB38A", "#9FE0D0"];
+export const palette = ["#00E5FF", "#FFF200", "#39FF14", "#FF4FD8", "#C77DFF", "#FF8A00", "#00FFB3"];
 
 export function archiveSourceLabel(item: ArchiveSong) {
   const years = archiveYears(item);
@@ -34,8 +34,14 @@ export function getVisibleSchedules(data: AppData, currentUser: ClubUser, adminM
   });
 }
 
+// 공연 카드와 캘린더 공연 일정 색. 공연 id로 네온 색 하나를 고정해서 고른다.
+export function performanceAccent(performance: Performance) {
+  const hash = [...performance.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return palette[hash % palette.length];
+}
+
 export function performanceColor(performance: Performance, user: ClubUser) {
-  return user.performanceColors?.[performance.id] ?? performance.color ?? defaultAccent;
+  return user.performanceColors?.[performance.id] ?? performanceAccent(performance);
 }
 
 export function teamColor(team?: Team) {

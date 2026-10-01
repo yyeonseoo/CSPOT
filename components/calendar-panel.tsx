@@ -124,7 +124,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
                   // 휴대폰: 테두리 없는 칸에 날짜와 색 점만. 넓은 화면: 기존 카드 + 일정 이름.
                   "flex min-h-14 flex-col items-center rounded-xl py-1.5 transition sm:min-h-24 sm:items-stretch sm:rounded-2xl sm:bg-background sm:p-2 sm:text-left",
                   !isCurrentMonth && "opacity-40",
-                  isSelected ? "bg-primary/10 sm:ring-4 sm:ring-primary/10" : "",
+                  isSelected ? "ring-2 ring-inset ring-foreground" : "",
                 )}
                 onClick={() => {
                   setSelectedDate(dateKey);

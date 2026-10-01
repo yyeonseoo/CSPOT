@@ -170,7 +170,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
       <Panel title="과거 공연 이력 DB">
         <div>
           <input
-            className="w-full rounded-xl bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-xl bg-muted px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="공연명, 곡명, 팀원 이름 검색"
@@ -215,7 +215,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
               <p className="mt-1 text-sm font-medium text-muted-foreground">{mergeBase.performanceTitle} · 팀장 {mergeBase.leaderName || "미지정"}</p>
             </div>
             <input
-              className="w-full rounded-xl bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-xl bg-muted px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
               value={mergeQuery}
               onChange={(event) => setMergeQuery(event.target.value)}
               placeholder="병합할 곡 검색"

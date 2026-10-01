@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDateTime, formatSongDuration } from "@/lib/format";
-import { isPastPerformance, teamColor } from "@/lib/schedule";
+import { isPastPerformance, teamColor, performanceAccent } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import type { AppData, Performance } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -17,7 +17,7 @@ export function PerformanceView({ data }: { data: AppData }) {
     <button
       key={performance.id}
       type="button"
-      style={{ backgroundColor: performance.color }}
+      style={{ backgroundColor: performanceAccent(performance) }}
       className={cn("rounded-2xl p-4 text-left text-neutral-900", selectedId === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
       onClick={() => setSelectedId(selectedId === performance.id ? "" : performance.id)}
     >
