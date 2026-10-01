@@ -64,19 +64,19 @@ export function NoticePanel({ data, currentUser, persist, admin = false }: { dat
         <div className="space-y-2">
           {visibleNotices.length === 0 && <p className="text-sm text-muted-foreground">공지가 없습니다.</p>}
           {visibleNotices.map((notice) => (
-            <article key={notice.id} className="rounded-2xl bg-background p-4">
+            <article key={notice.id} className="rounded-2xl bg-[#FFF200] p-4 text-neutral-900">
               <div className="flex items-start justify-between gap-3">
                 <p className="min-w-0 break-words font-semibold">
-                  {notice.pinned && <span className="mr-1.5 rounded-full bg-primary px-2 py-0.5 align-middle text-[11px] font-semibold text-primary-foreground">고정</span>}
+                  {notice.pinned && <span className="mr-1.5 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-[11px] font-semibold text-white">고정</span>}
                   {notice.title}
                 </p>
-                <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(notice.createdAt)}</span>
+                <span className="shrink-0 text-xs text-neutral-700">{formatDateTime(notice.createdAt)}</span>
               </div>
-              {notice.content && <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{notice.content}</p>}
+              {notice.content && <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700">{notice.content}</p>}
               {admin && (
                 <div className="mt-3 flex gap-2">
-                  <button type="button" className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground" onClick={() => startEdit(notice)}>수정</button>
-                  <button type="button" className="rounded-full bg-card px-4 py-1.5 text-xs font-semibold text-destructive" onClick={() => remove(notice)}>삭제</button>
+                  <button type="button" className="rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" onClick={() => startEdit(notice)}>수정</button>
+                  <button type="button" className="rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-red-600" onClick={() => remove(notice)}>삭제</button>
                 </div>
               )}
             </article>

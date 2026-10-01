@@ -2,16 +2,12 @@ import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
 import { defaultAccent, isAppData, isPastPerformance } from "@/lib/schedule";
-import { applyPattern, LEOPARDS, patternBackground, readPattern } from "@/lib/theme";
-import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
 import { ColorField, Panel, PrimaryButton } from "@/components/ui";
 
 export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   const [performanceColors, setPerformanceColors] = useState<Record<string, string>>(currentUser.performanceColors ?? {});
   const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance));
-  const [pattern, setPattern] = useState(() => readPattern());
-  const choosePattern = (id: string) => { applyPattern(id); setPattern(id); };
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,17 +64,6 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
   return (
     <Panel title="마이페이지" className="max-w-2xl">
       <div className="space-y-4">
-        <div className="space-y-3 rounded-xl bg-muted p-4">
-          <p className="text-sm font-semibold">배경 테마 <span className="font-normal text-muted-foreground">(이 기기에만 적용)</span></p>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-            <button type="button" onClick={() => choosePattern("")} className={cn("flex aspect-square flex-col items-center justify-end rounded-xl bg-background p-1.5 text-[11px] font-medium", pattern === "" && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}>기본</button>
-            {LEOPARDS.map((item) => (
-              <button key={item.id} type="button" onClick={() => choosePattern(item.id)} style={{ background: patternBackground(item.id).replace("220px", "110px") }} className={cn("flex aspect-square flex-col items-center justify-end rounded-xl p-1.5", pattern === item.id && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}>
-                <span className="whitespace-nowrap rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-neutral-900">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="space-y-3 rounded-xl bg-muted p-4">
           <p className="text-sm font-semibold">공연 색상</p>
           {upcomingPerformances.length === 0 ? (
