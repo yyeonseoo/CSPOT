@@ -73,8 +73,8 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
             <button type="button" onClick={() => choosePattern("")} className={cn("flex aspect-square flex-col items-center justify-end rounded-xl bg-background p-1.5 text-[11px] font-medium", pattern === "" && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}>기본</button>
             {LEOPARDS.map((item) => (
-              <button key={item.id} type="button" onClick={() => choosePattern(item.id)} style={{ background: patternBackground(item.id) }} className={cn("flex aspect-square flex-col items-center justify-end rounded-xl p-1.5", pattern === item.id && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}>
-                <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-neutral-900">{item.label}</span>
+              <button key={item.id} type="button" onClick={() => choosePattern(item.id)} style={{ background: patternBackground(item.id).replace("220px", "110px") }} className={cn("flex aspect-square flex-col items-center justify-end rounded-xl p-1.5", pattern === item.id && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}>
+                <span className="whitespace-nowrap rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-neutral-900">{item.label}</span>
               </button>
             ))}
           </div>

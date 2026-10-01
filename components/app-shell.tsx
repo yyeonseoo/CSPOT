@@ -88,7 +88,7 @@ export function AppShell({
       </aside>
 
       <section className="pb-6 md:ml-64">
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-background/95 px-4 pb-2 pt-3 sm:px-7">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-background px-4 pb-2 pt-3 sm:px-7">
           <div className="flex min-w-0 items-center gap-2">
             <button className="rounded-xl p-2 hover:bg-muted md:hidden" onClick={() => setMenuOpen(true)} aria-label="메뉴 열기">
               <Menu size={18} />
