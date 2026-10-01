@@ -1,10 +1,10 @@
 import { formatDateTime, toDatetimeLocal } from "@/lib/format";
-import { eventColor, teamColor } from "@/lib/schedule";
+import { eventColor, inkOn, teamColor } from "@/lib/schedule";
 import type { AppData, ClubUser, Notice, Schedule } from "@/types/domain";
 
 export function CalendarEventPill({ schedule, data, currentUser }: { schedule: Schedule; data: AppData; currentUser: ClubUser }) {
   const color = eventColor(schedule, data, currentUser);
-  return <div className="truncate rounded-md px-2 py-1 text-[11px] font-semibold text-neutral-900" style={{ backgroundColor: color }}>{schedule.title}</div>;
+  return <div className="truncate rounded-md px-2 py-1 text-[11px] font-semibold" style={{ backgroundColor: color, color: inkOn(color) }}>{schedule.title}</div>;
 }
 
 function formatScheduleRange(startsAt: string, endsAt: string) {
@@ -15,10 +15,10 @@ function formatScheduleRange(startsAt: string, endsAt: string) {
 export function ScheduleRow({ schedule, data, currentUser, editable = false, onEdit, onCancel }: { schedule: Schedule; data: AppData; currentUser: ClubUser; editable?: boolean; onEdit?: () => void; onCancel?: () => void }) {
   const color = eventColor(schedule, data, currentUser);
   return (
-    <div className="rounded-2xl p-4 text-neutral-900" style={{ backgroundColor: color }}>
+    <div className="rounded-2xl p-4" style={{ backgroundColor: color, color: inkOn(color) }}>
       <div className="min-w-0">
         <p className="truncate font-semibold">{schedule.title}</p>
-        <p className="text-xs leading-5 text-neutral-700">{formatScheduleRange(schedule.startsAt, schedule.endsAt)}{schedule.location && `, ${schedule.location}`}</p>
+        <p className="text-xs leading-5 opacity-70">{formatScheduleRange(schedule.startsAt, schedule.endsAt)}{schedule.location && `, ${schedule.location}`}</p>
         {editable && (
           <div className="mt-2 flex gap-2">
             <button type="button" className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold" onClick={onEdit}>수정</button>

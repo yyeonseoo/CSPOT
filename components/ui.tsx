@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { defaultAccent, palette } from "@/lib/schedule";
+import { defaultAccent, pickColors } from "@/lib/schedule";
 import { timeOptions } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -52,15 +52,15 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
           <p className="truncate text-base font-semibold">{label}</p>
           <p className="text-xs font-medium text-muted-foreground">{validValue.toUpperCase()}</p>
         </div>
-        <span className="h-10 w-10 shrink-0 rounded-xl" style={{ backgroundColor: validValue }} />
+        <span className="h-10 w-10 shrink-0 rounded-xl shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)]" style={{ backgroundColor: validValue }} />
       </div>
       <div className="flex flex-wrap gap-2">
-        {palette.map((color) => (
+        {pickColors.map((color) => (
           <button
             key={color}
             type="button"
             aria-label={`${color} 선택`}
-            className={cn("h-9 w-9 rounded-full shadow-sm transition hover:scale-105", validValue === color && "ring-2 ring-foreground ring-offset-2 ring-offset-background")}
+            className={cn("h-9 w-9 rounded-full shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)] transition hover:scale-105", validValue === color && "ring-2 ring-foreground ring-offset-2 ring-offset-background")}
             style={{ backgroundColor: color }}
             onClick={() => onChange(color)}
           />

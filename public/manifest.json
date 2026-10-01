@@ -1,6 +1,6 @@
 {
-  "name": "Club Scheduler",
-  "short_name": "Scheduler",
+  "name": "CSPOT",
+  "short_name": "CSPOT",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f9fb",

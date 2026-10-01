@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDateTime, formatSongDuration } from "@/lib/format";
-import { isPastPerformance, teamColor, performanceAccent } from "@/lib/schedule";
+import { isPastPerformance, teamColor, performanceAccent, inkOn } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import type { AppData, Performance } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -98,7 +98,7 @@ function PerformanceInfo({ data, performance }: { data: AppData; performance: Pe
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {focusSongs.map((song) => (
-                    <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-900" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)) }}>
+                    <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)), color: inkOn(teamColor(data.teams.find((team) => team.id === song.teamId))) }}>
                       {song.title}{song.leaderUserId === focus.id && " (곡팀장)"}
                     </span>
                   ))}

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
-import { defaultAccent, isAppData, isPastPerformance, palette, teamColor } from "@/lib/schedule";
+import { defaultAccent, isAppData, isPastPerformance, pickColors, teamColor } from "@/lib/schedule";
 import { applyTheme, readTheme, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
@@ -88,12 +88,12 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
           <div className="space-y-3 rounded-xl bg-muted p-4">
             <p className="text-sm font-semibold">{team.name} 팀 색 <span className="font-normal text-muted-foreground">(팀 모두에게 적용)</span></p>
             <div className="flex flex-wrap gap-2">
-              {palette.map((color) => (
+              {pickColors.map((color) => (
                 <button
                   key={color}
                   type="button"
                   aria-label={`${color} 선택`}
-                  className={cn("h-9 w-9 rounded-full", teamColor(team) === color && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}
+                  className={cn("h-9 w-9 rounded-full shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)]", teamColor(team) === color && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}
                   style={{ backgroundColor: color }}
                   onClick={() => persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, color, updatedAt: nowIso() } : item) })}
                 />

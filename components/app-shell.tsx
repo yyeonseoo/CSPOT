@@ -63,7 +63,7 @@ export function AppShell({
         )}
       >
         <div className="mb-4 px-2 pb-4">
-          <p className="text-sm font-semibold">Club Scheduler</p>
+          <p className="text-sm font-semibold">CSPOT</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{adminMode ? "관리자" : "사용자"}</p>
         </div>
         <nav className="space-y-1">

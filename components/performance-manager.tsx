@@ -2,7 +2,7 @@ import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
-import { alpha, isPastPerformance, palette, teamColor, performanceAccent } from "@/lib/schedule";
+import { alpha, isPastPerformance, palette, teamColor, performanceAccent, inkOn } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -438,7 +438,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {focusSongs.map((song) => (
-                        <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-900" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)) }}>
+                        <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)), color: inkOn(teamColor(data.teams.find((team) => team.id === song.teamId))) }}>
                           {song.title}{song.leaderUserId === focusMember.id && " (곡팀장)"}
                         </span>
                       ))}

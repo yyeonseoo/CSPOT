@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { currentTerm, nowIso, previousTerm, termLabel } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
 import { canManageTeams, canManageUsers, roleLabel } from "@/lib/permissions";
-import { alpha, defaultAccent, fixedTeamColors, isPastPerformance, palette, teamColor } from "@/lib/schedule";
+import { alpha, defaultAccent, fixedTeamColors, inkOn, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Role, Team } from "@/types/domain";
 import { DataList, Field, Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
@@ -119,11 +119,11 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
             {data.teams.map((team) => {
               const canDelete = !data.users.some((user) => user.teamId === team.id) && !data.songs.some((song) => song.teamId === team.id);
               return (
-                <div key={team.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium" style={{ backgroundColor: teamColor(team) }}>
+                <div key={team.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium" style={{ backgroundColor: teamColor(team), color: inkOn(teamColor(team)) }}>
                   <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: teamColor(team) }} />{team.name}</span>
                   <span className="flex gap-3">
-                    <button className="text-xs font-medium text-neutral-800" onClick={() => renameTeam(team)}>이름 변경</button>
-                    <button className="text-xs text-neutral-700 disabled:opacity-40" disabled={!canDelete} title={canDelete ? "" : "소속 멤버나 곡이 있으면 삭제할 수 없습니다"} onClick={() => deleteTeam(team.id)}>삭제</button>
+                    <button className="text-xs font-medium opacity-80" onClick={() => renameTeam(team)}>이름 변경</button>
+                    <button className="text-xs opacity-70 disabled:opacity-30" disabled={!canDelete} title={canDelete ? "" : "소속 멤버나 곡이 있으면 삭제할 수 없습니다"} onClick={() => deleteTeam(team.id)}>삭제</button>
                   </span>
                 </div>
               );

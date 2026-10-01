@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
 import { archiveYears, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
-import { archiveSourceLabel, teamColor } from "@/lib/schedule";
+import { archiveSourceLabel, inkOn, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ArchiveSong, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -255,15 +255,15 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
             return (
               <SwipeActions key={item.id} onEdit={() => beginArchiveEdit(item)} onDelete={() => deleteArchive(item)}>
               <div
-                className="cursor-pointer rounded-2xl p-4 text-neutral-900 transition"
-                style={{ backgroundColor: teamColor(team) }}
+                className="cursor-pointer rounded-2xl p-4 transition"
+                style={{ backgroundColor: teamColor(team), color: inkOn(teamColor(team)) }}
                 onClick={() => handleArchiveClick(item)}
                 onDoubleClick={() => handleArchiveDoubleClick(item)}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-lg font-semibold">{splitOriginalTag(item.songTitle).title}{splitOriginalTag(item.songTitle).original && <span className="ml-2 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-xs text-white font-semibold text-amber-700">창작</span>}</p>
-                    <p className="text-sm font-medium text-neutral-700">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}{item.durationSeconds ? ` · ${formatSongDuration(item.durationSeconds)}` : ""}</p>
+                    <p className="text-sm font-medium opacity-70">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}{item.durationSeconds ? ` · ${formatSongDuration(item.durationSeconds)}` : ""}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {selectedNames.length > 0 && <span className="w-fit rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-foreground">{selectedMatchCount}/{selectedNames.length}명 일치</span>}

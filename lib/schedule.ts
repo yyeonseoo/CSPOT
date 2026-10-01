@@ -12,6 +12,14 @@ export const fixedTeamColors: Record<string, string> = {
 
 export const palette = ["#00E5FF", "#FFF200", "#39FF14", "#FF4FD8", "#C77DFF", "#FF8A00", "#00FFB3"];
 
+// 사람이 직접 고르는 색. 자동으로 정하는 색은 네온만 쓴다.
+export const pickColors = [...palette, "#000000", "#FFFFFF"];
+
+// 색 바탕 위 글자색. 검정 바탕일 때만 흰 글씨.
+export function inkOn(color: string) {
+  return color.toUpperCase() === "#000000" ? "#FFFFFF" : "#171717";
+}
+
 export function archiveSourceLabel(item: ArchiveSong) {
   const years = archiveYears(item);
   if (years.length > 0) return years.map((year) => String(year).slice(2)).join(", ");
@@ -46,7 +54,7 @@ export function performanceColor(performance: Performance, user: ClubUser) {
 
 export function teamColor(team?: Team) {
   if (!team) return defaultAccent;
-  return palette.includes(team.color) ? team.color : fixedTeamColors[team.name] ?? defaultAccent;
+  return pickColors.includes(team.color) ? team.color : fixedTeamColors[team.name] ?? defaultAccent;
 }
 
 export function alpha(hex: string, opacity = "33") {
