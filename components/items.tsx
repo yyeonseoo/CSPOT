@@ -34,9 +34,9 @@ export function NoticeCard({ notice }: { notice: Notice }) {
   return <div className="rounded-2xl bg-[#F7EE6A] p-4 text-neutral-900"><p className="font-semibold">{notice.title}</p><p className="mt-1 text-sm leading-6 text-neutral-700">{notice.content}</p></div>;
 }
 
-export function UserPill({ user, data }: { user: ClubUser; data: AppData }) {
+export function UserPill({ user, data, viewer }: { user: ClubUser; data: AppData; viewer?: ClubUser }) {
   const team = data.teams.find((item) => item.id === user.teamId);
-  const color = teamColor(team);
+  const color = teamColor(team, viewer);
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-neutral-900">
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />

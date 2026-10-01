@@ -273,7 +273,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
                 <div className="mt-3 flex flex-wrap gap-2">
                   {item.memberNames.map((name) => {
                     const user = data.users.find((candidate) => candidate.name === name);
-                    return user ? <UserPill key={name} user={user} data={data} /> : <span key={name} className="rounded-full bg-white/80 px-3 py-1.5 text-sm font-semibold text-neutral-900">{name}</span>;
+                    return user ? <UserPill key={name} user={user} data={data} viewer={currentUser} /> : <span key={name} className="rounded-full bg-white/80 px-3 py-1.5 text-sm font-semibold text-neutral-900">{name}</span>;
                   })}
                 </div>
               </div>
@@ -304,7 +304,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
                   const selected = archiveForm.memberNames.includes(user.name);
                   return (
                     <div key={user.id} className="flex items-center justify-between gap-2 rounded-xl bg-background p-2">
-                      <UserPill user={user} data={data} />
+                      <UserPill user={user} data={data} viewer={currentUser} />
                       <div className="flex gap-2">
                         <SoftCheckbox checked={selected} label="참여" onToggle={() => setArchiveForm((form) => {
                           const memberNames = selected ? form.memberNames.filter((name) => name !== user.name) : [...form.memberNames, user.name];

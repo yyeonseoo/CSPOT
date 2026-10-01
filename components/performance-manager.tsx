@@ -426,7 +426,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                 {performanceMembers.length === 0 && <p className="text-sm text-muted-foreground">아직 지정된 참여 인원이 없습니다.</p>}
                 {performanceMembers.map((user) => (
                   <button key={user.id} type="button" className={cn("rounded-full", focusMemberId === user.id && "ring-2 ring-foreground")} onClick={() => setFocusMemberId(focusMemberId === user.id ? "" : user.id)}>
-                    <UserPill user={user} data={data} />
+                    <UserPill user={user} data={data} viewer={currentUser} />
                   </button>
                 ))}
               </div>
@@ -466,7 +466,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <div className="grid max-h-80 gap-2 overflow-auto">
                 {filteredPerformanceUsers.map((user) => (
                   <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold" style={{ backgroundColor: alpha(teamColor(data.teams.find((team) => team.id === user.teamId), currentUser), "2E") }}>
-                    <UserPill user={user} data={data} />
+                    <UserPill user={user} data={data} viewer={currentUser} />
                     <SoftCheckbox checked={draftMemberIds.includes(user.id)} label="선택" onToggle={() => togglePerformanceMember(user.id)} />
                   </div>
                 ))}
@@ -515,7 +515,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <div className="grid max-h-44 gap-2 overflow-auto">
                 {filteredSongMembers.map((user) => (
                   <div key={user.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 rounded-xl bg-background p-2 text-sm">
-                    <UserPill user={user} data={data} />
+                    <UserPill user={user} data={data} viewer={currentUser} />
                     <SoftCheckbox checked={songMemberIds.includes(user.id)} label="참여" onToggle={() => setSongMemberIds((prev) => prev.includes(user.id) ? prev.filter((id) => id !== user.id) : [...prev, user.id])} />
                     <SoftCheckbox
                       checked={leaderIds.includes(user.id)}
@@ -690,7 +690,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       </div>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {members.map((user) => <UserPill key={user.id} user={user} data={data} />)}
+                      {members.map((user) => <UserPill key={user.id} user={user} data={data} viewer={currentUser} />)}
                     </div>
                     <div className="mt-3 flex gap-2" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       <button type="button" className="rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" onClick={() => startEditSong(song)}>팀 수정</button>
@@ -711,7 +711,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       <div className="grid max-h-56 gap-2 overflow-auto">
                         {performanceMembers.map((user) => (
                           <div key={user.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1.5 rounded-xl bg-background p-2 text-sm">
-                            <UserPill user={user} data={data} />
+                            <UserPill user={user} data={data} viewer={currentUser} />
                             <SoftCheckbox
                               checked={editSongForm.memberIds.includes(user.id)}
                               label="참여"

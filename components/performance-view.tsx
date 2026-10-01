@@ -73,7 +73,7 @@ function PerformanceInfo({ data, currentUser, performance }: { data: AppData; cu
                   {song.durationSeconds ? ` · ${formatSongDuration(song.durationSeconds)}` : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {membersOf(song.id).map((user) => <UserPill key={user.id} user={user} data={data} />)}
+                  {membersOf(song.id).map((user) => <UserPill key={user.id} user={user} data={data} viewer={currentUser} />)}
                 </div>
               </div>
             );
@@ -86,7 +86,7 @@ function PerformanceInfo({ data, currentUser, performance }: { data: AppData; cu
           <div className="flex flex-wrap gap-2">
             {members.map((user) => (
               <button key={user.id} type="button" className={cn("rounded-full", focusId === user.id && "ring-2 ring-foreground")} onClick={() => setFocusId(focusId === user.id ? "" : user.id)}>
-                <UserPill user={user} data={data} />
+                <UserPill user={user} data={data} viewer={currentUser} />
               </button>
             ))}
           </div>
