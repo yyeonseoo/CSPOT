@@ -118,6 +118,8 @@ export function Select({ label, value, onChange, options }: { label: string; val
                 <button
                   key={optionValue}
                   type="button"
+                  // 열 때 선택된 항목이 목록 가운데 오게 (시간 목록이 00:00부터 시작하지 않도록)
+                  ref={selected ? (element) => { if (element?.parentElement) element.parentElement.scrollTop = element.offsetTop - element.parentElement.clientHeight / 2; } : undefined}
                   className={cn("flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition", selected ? "bg-primary/18 text-foreground" : "hover:bg-muted")}
                   onClick={() => {
                     onChange(optionValue);
