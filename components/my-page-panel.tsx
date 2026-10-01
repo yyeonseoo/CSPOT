@@ -1,23 +1,28 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
-import { defaultAccent, isAppData, isPastPerformance, teamColor } from "@/lib/schedule";
+import { isAppData, isPastPerformance, performanceColor, teamColor } from "@/lib/schedule";
 import { applyTheme, readTheme, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
-import { ColorDots, ColorField, Panel, PrimaryButton } from "@/components/ui";
+import { ColorDots, Panel, Select } from "@/components/ui";
 
 export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
-  const [performanceColors, setPerformanceColors] = useState<Record<string, string>>(currentUser.performanceColors ?? {});
-  const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance));
+  // 예정 공연 먼저, 그다음 지난 공연(최근 순)
+  const performances = [
+    ...data.performances.filter((performance) => !isPastPerformance(performance)).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+    ...data.performances.filter((performance) => isPastPerformance(performance)).sort((a, b) => b.startsAt.localeCompare(a.startsAt)),
+  ];
+  const [performanceId, setPerformanceId] = useState(performances[0]?.id ?? "");
+  const pickedPerformance = performances.find((performance) => performance.id === performanceId);
   const [theme, setTheme] = useState(() => readTheme());
   const chooseTheme = (id: string) => { applyTheme(id); setTheme(id); };
-  const team = data.teams.find((item) => item.id === currentUser.teamId);
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function save() {
-    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, performanceColors, updatedAt: nowIso() } : user) });
+  // 공연 색은 나에게만 보이는 색, 고르면 바로 저장
+  function setPerformanceColor(color: string) {
+    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, performanceColors: { ...user.performanceColors, [performanceId]: color }, updatedAt: nowIso() } : user) });
   }
 
   function exportBackup() {
@@ -55,7 +60,6 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
         }
         const normalizedData = normalizeData({ ...nextData, archiveSongs: nextData.archiveSongs ?? [] });
         persist(normalizedData);
-        setPerformanceColors(normalizedData.users.find((user) => user.id === currentUser.id)?.performanceColors ?? {});
         setBackupMessage("백업 파일을 가져왔습니다.");
       } catch {
         setBackupMessage("백업 파일을 읽지 못했습니다.");
@@ -84,23 +88,26 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
             ))}
           </div>
         </div>
-        {team && (
-          <div className="space-y-3 rounded-xl bg-muted p-4">
-            <p className="text-sm font-semibold">{team.name} 팀 색 <span className="font-normal text-muted-foreground">(팀 모두에게 적용)</span></p>
-            <ColorDots value={teamColor(team)} onChange={(color) => persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, color, updatedAt: nowIso() } : item) })} />
-          </div>
-        )}
         <div className="space-y-3 rounded-xl bg-muted p-4">
-          <p className="text-sm font-semibold">공연 색상</p>
-          {upcomingPerformances.length === 0 ? (
-            <p className="rounded-xl bg-background p-4 text-sm font-medium text-muted-foreground">예정된 공연이 없습니다.</p>
+          <p className="text-sm font-semibold">공연별 색 <span className="font-normal text-muted-foreground">(나에게만 적용)</span></p>
+          {pickedPerformance ? (
+            <>
+              <Select label="" value={performanceId} onChange={setPerformanceId} options={performances.map((performance) => [performance.id, isPastPerformance(performance) ? `${performance.title} (지난 공연)` : performance.title])} />
+              <ColorDots value={performanceColor(pickedPerformance, currentUser)} onChange={setPerformanceColor} />
+            </>
           ) : (
-            upcomingPerformances.map((performance) => (
-              <ColorField key={performance.id} label={performance.title} value={performanceColors[performance.id] ?? defaultAccent} onChange={(value) => setPerformanceColors({ ...performanceColors, [performance.id]: value })} />
-            ))
+            <p className="text-sm text-muted-foreground">공연이 없습니다.</p>
           )}
         </div>
-        <PrimaryButton onClick={save}>저장</PrimaryButton>
+        <div className="space-y-3 rounded-xl bg-muted p-4">
+          <p className="text-sm font-semibold">팀별 색 <span className="font-normal text-muted-foreground">(모두에게 적용)</span></p>
+          {data.teams.filter((item) => item.isActive).map((item) => (
+            <div key={item.id} className="space-y-2">
+              <p className="text-sm font-medium">{item.name}</p>
+              <ColorDots small value={teamColor(item)} onChange={(color) => persist({ ...data, teams: data.teams.map((team) => team.id === item.id ? { ...team, color, updatedAt: nowIso() } : team) })} />
+            </div>
+          ))}
+        </div>
         {adminMode && <div className="space-y-3 rounded-xl bg-muted p-4">
           <p className="text-sm font-semibold">데이터 백업</p>
           <div className="grid gap-2 sm:grid-cols-2">

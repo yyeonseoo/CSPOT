@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { defaultAccent, pickColors } from "@/lib/schedule";
+import { pickColors } from "@/lib/schedule";
 import { timeOptions } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -41,28 +41,6 @@ export function DateTimeField({ label, value, onChange }: { label: string; value
 
 export function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
   return <label className="block text-sm font-medium">{label}<input className="mt-1 w-full rounded-xl bg-muted px-3 py-2.5 text-base outline-none transition focus:ring-2 focus:ring-primary/20" type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
-}
-
-export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const validValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : defaultAccent;
-  return (
-    <div className="space-y-3 rounded-xl bg-background p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold">{label}</p>
-          <p className="text-xs font-medium text-muted-foreground">{validValue.toUpperCase()}</p>
-        </div>
-        <span className="h-10 w-10 shrink-0 rounded-xl shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)]" style={{ backgroundColor: validValue }} />
-      </div>
-      <ColorDots value={validValue} onChange={onChange} />
-      <input
-        className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-semibold uppercase outline-none transition focus:ring-2 focus:ring-primary/30"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="#7BC7F2"
-      />
-    </div>
-  );
 }
 
 // 네온 + 회색 + 검정 + 흰색 중에서 고르는 동그라미 줄
