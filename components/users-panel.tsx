@@ -152,7 +152,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
                 <button
                   key={term}
                   type="button"
-                  className={cn("rounded-xl px-3.5 py-2.5 text-left transition", selected ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground")}
+                  className={cn("rounded-xl px-3.5 py-2.5 text-left transition", selected ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground")}
                   onClick={() => {
                     setSelectedTerm(term);
                     setShowAllMembers(false);
@@ -165,13 +165,13 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
             })}
           </div>
           {carryOverUsers.length > 0 && (
-            <button type="button" className="mb-4 w-full rounded-xl border border-dashed border-primary/40 px-4 py-3 text-sm font-semibold text-primary" onClick={carryOver}>
+            <button type="button" className="mb-4 w-full rounded-xl px-4 py-3 text-sm font-semibold text-primary" onClick={carryOver}>
               {termLabel(prevTerm)} 멤버 {carryOverUsers.length}명 불러오기
             </button>
           )}
           <div className="mb-4 space-y-2">
             <input
-              className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-xl bg-background px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-primary/20"
               value={addQuery}
               onChange={(event) => setAddQuery(event.target.value)}
               placeholder="기존 멤버 이름으로 이 학기에 추가"
@@ -190,7 +190,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
           </div>
           {usersByTerm.length === 0 && <p className="text-sm text-muted-foreground">이 학기에 등록된 멤버가 없습니다.</p>}
           {usersByTerm.length > 0 && (
-            <button type="button" className="mb-4 w-full rounded-full border border-destructive/40 px-4 py-2.5 text-sm font-semibold text-destructive" onClick={clearTerm}>
+            <button type="button" className="mb-4 w-full rounded-full px-4 py-2.5 text-sm font-semibold text-destructive" onClick={clearTerm}>
               {termLabel(selectedTerm)} 명단 비우기
             </button>
           )}
@@ -202,8 +202,8 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
               return (
                 <button
                   key={user.id}
-                  className={cn("relative overflow-hidden rounded-xl border p-4 pl-5 text-left transition", selected ? "shadow-sm" : "border-border bg-background dark:border-border")}
-                  style={selected ? { borderColor: color, backgroundColor: alpha(color, "2E") } : undefined}
+                  className={cn("relative overflow-hidden rounded-xl p-4 pl-5 text-left transition", selected ? "shadow-sm" : "bg-background")}
+                  style={selected ? { backgroundColor: alpha(color, "2E") } : undefined}
                   onClick={() => setSelectedUserId(user.id)}
                 >
                   <span className="absolute inset-y-3 left-0 w-1.5 rounded-r-full" style={{ backgroundColor: color }} />
@@ -293,7 +293,7 @@ function MemberDetailPanel({ data, user, termOptions, canEditRole, persist }: { 
                   <button
                     key={term}
                     type="button"
-                    className={cn("rounded-xl px-3 py-3 text-sm font-semibold transition", selected ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground")}
+                    className={cn("rounded-xl px-3 py-3 text-sm font-semibold transition", selected ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground")}
                     onClick={() => toggleTerm(term)}
                   >
                     {termLabel(term)}

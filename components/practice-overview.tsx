@@ -141,7 +141,7 @@ export function DayTimeline({ survey, data, requests, selectedId, onSelect, high
                     const ratio = memberIds.length ? available / memberIds.length : 0;
                     return <div key={time} className="absolute inset-x-0" title={`${time} 가능 ${available}/${memberIds.length}명`} style={{ top: timeToMinutes(time) - from, height: survey.slotMinutes, backgroundColor: ratio ? `hsl(95 72% ${92 - ratio * 26}%)` : undefined }} />;
                   })}
-                  {hourMarks.map((minute) => <div key={minute} className="absolute inset-x-0 border-t border-border dark:border-border" style={{ top: minute - from }} />)}
+                  {hourMarks.map((minute) => <div key={minute} className="absolute inset-x-0 border-t" style={{ top: minute - from }} />)}
                   {blocks.filter((block) => block.request.songId === songId).map((block) => {
                     const approved = block.request.status === "APPROVED";
                     const conflict = findPracticeConflicts(block.request, requests, data).length > 0;
@@ -152,7 +152,7 @@ export function DayTimeline({ survey, data, requests, selectedId, onSelect, high
                         disabled={!onSelect}
                         className={cn(
                           "absolute inset-x-1 overflow-hidden rounded-xl px-1.5 py-1 text-left text-[11px] font-semibold leading-tight shadow-sm disabled:cursor-default",
-                          approved ? "bg-primary text-primary-foreground" : conflict ? "bg-[#FF8A4C] text-neutral-900" : "border border-foreground/25 bg-background text-foreground",
+                          approved ? "bg-primary text-primary-foreground" : conflict ? "bg-[#FF8A4C] text-neutral-900" : "bg-background text-foreground",
                           selectedId === block.request.id && "ring-2 ring-foreground",
                         )}
                         style={{ top: timeToMinutes(block.start) - from, height: timeToMinutes(block.end) - timeToMinutes(block.start) }}

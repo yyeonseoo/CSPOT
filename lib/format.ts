@@ -98,3 +98,9 @@ export function termLabel(term: string) {
   const [year, semester] = term.split("-");
   return `${year.slice(2)}년 ${semester}학기`;
 }
+
+// 시간 선택 목록 (24시간제). 지금 값이 목록에 없으면(예: 05:44) 함께 넣는다.
+export function timeOptions(current = "", step = 10) {
+  const times = Array.from({ length: (24 * 60) / step }, (_, index) => minutesToTime(index * step));
+  return current && !times.includes(current) ? [...times, current].sort() : times;
+}

@@ -1,12 +1,12 @@
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { calendarDays, monthTitle, nowIso, sameDay, toDateKey, toDatetimeLocal, today } from "@/lib/format";
+import { calendarDays, minutesToTime, monthTitle, nowIso, sameDay, timeOptions, timeToMinutes, toDateKey, toDatetimeLocal, today } from "@/lib/format";
 import { createAudit } from "@/lib/local-data";
 import { eventColor, getVisibleSchedules } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Schedule, PracticeCandidate } from "@/types/domain";
 import { CalendarEventPill, NoticeCard, ScheduleRow } from "@/components/items";
-import { Field, IconButton, Panel, PrimaryButton, Tabs } from "@/components/ui";
+import { DateTimeField, Field, IconButton, Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -30,7 +30,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
   const pinned = data.notices.filter((notice) => notice.pinned);
 
   function addPersonalSchedule() {
-    if (!personalTitle.trim()) return;
+    if (!personalTitle.trim() || personalEnd <= personalStart) return;
     const createdAt = nowIso();
     const schedule: Schedule = {
       id: uid("schedule"),
@@ -108,7 +108,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
           <h3 className="text-lg font-bold sm:text-xl">{monthTitle(month)}</h3>
           <div className="flex items-center gap-1.5">
             <IconButton label="이전 달" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={18} /></IconButton>
-            <button className="rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-muted" onClick={() => setMonth(new Date())}>오늘</button>
+            <button className="rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted" onClick={() => setMonth(new Date())}>오늘</button>
             <IconButton label="다음 달" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={18} /></IconButton>
           </div>
         </div>
@@ -125,9 +125,9 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
                 key={date.toISOString()}
                 className={cn(
                   // 휴대폰: 테두리 없는 칸에 날짜와 색 점만. 넓은 화면: 기존 카드 + 일정 이름.
-                  "flex min-h-14 flex-col items-center rounded-xl py-1.5 transition sm:min-h-24 sm:items-stretch sm:rounded-2xl sm:border sm:bg-background sm:p-2 sm:text-left",
+                  "flex min-h-14 flex-col items-center rounded-xl py-1.5 transition sm:min-h-24 sm:items-stretch sm:rounded-2xl sm:bg-background sm:p-2 sm:text-left",
                   !isCurrentMonth && "opacity-40",
-                  isSelected ? "bg-primary/10 sm:border-primary/70 sm:ring-4 sm:ring-primary/10" : isToday ? "sm:border-primary/35" : "sm:border-border sm:dark:border-border",
+                  isSelected ? "bg-primary/10 sm:ring-4 sm:ring-primary/10" : "",
                 )}
                 onClick={() => {
                   setSelectedDate(dateKey);
@@ -168,24 +168,25 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
             ))}
           </div>
           {editingScheduleId && (
-            <div className="mb-4 space-y-3 border-t border-border pt-4 dark:border-border">
+            <div className="mb-4 space-y-3 pt-2">
               <Field label="일정 제목" value={scheduleForm.title} onChange={(value) => setScheduleForm({ ...scheduleForm, title: value })} />
-              <Field label="시작" type="datetime-local" value={scheduleForm.startsAt} onChange={(value) => setScheduleForm({ ...scheduleForm, startsAt: value })} />
-              <Field label="종료" type="datetime-local" value={scheduleForm.endsAt} onChange={(value) => setScheduleForm({ ...scheduleForm, endsAt: value })} />
-              <PrimaryButton onClick={saveScheduleEdit}>수정 저장</PrimaryButton>
+              <DateTimeField label="시작" value={scheduleForm.startsAt} onChange={(value) => setScheduleForm({ ...scheduleForm, startsAt: value })} />
+              <DateTimeField label="종료" value={scheduleForm.endsAt} onChange={(value) => setScheduleForm({ ...scheduleForm, endsAt: value })} />
+              {scheduleForm.startsAt >= scheduleForm.endsAt && <p className="text-sm text-destructive">종료가 시작보다 늦어야 합니다.</p>}
+              <PrimaryButton onClick={saveScheduleEdit} disabled={!scheduleForm.title.trim() || scheduleForm.startsAt >= scheduleForm.endsAt}>수정 저장</PrimaryButton>
               <button className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setEditingScheduleId(null)}>닫기</button>
             </div>
           )}
           {!showCreate ? (
             <PrimaryButton onClick={() => setShowCreate(true)} icon={<Plus size={17} />}>일정 생성</PrimaryButton>
           ) : (
-            <div className="space-y-3 border-t border-border pt-4 dark:border-border">
+            <div className="space-y-3 pt-2">
               <Field label="개인 일정 제목" value={personalTitle} onChange={setPersonalTitle} />
               <div className="grid grid-cols-2 gap-2">
-                <Field label="시작" type="time" value={personalStart} onChange={setPersonalStart} />
-                <Field label="종료" type="time" value={personalEnd} onChange={setPersonalEnd} />
+                <Select label="시작" value={personalStart} onChange={(value) => { setPersonalStart(value); if (personalEnd <= value) setPersonalEnd(minutesToTime(Math.min(24 * 60 - 10, timeToMinutes(value) + 60))); }} options={timeOptions(personalStart).map((item) => [item, item])} />
+                <Select label="종료" value={personalEnd} onChange={setPersonalEnd} options={timeOptions(personalEnd).filter((item) => item > personalStart).map((item) => [item, item])} />
               </div>
-              <PrimaryButton onClick={addPersonalSchedule}>개인 일정 추가</PrimaryButton>
+              <PrimaryButton onClick={addPersonalSchedule} disabled={!personalTitle.trim() || personalEnd <= personalStart}>개인 일정 추가</PrimaryButton>
               <button className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setShowCreate(false)}>닫기</button>
             </div>
           )}

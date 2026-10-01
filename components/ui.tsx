@@ -2,6 +2,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { defaultAccent, palette } from "@/lib/schedule";
+import { timeOptions } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function SoftCheckbox({ checked, label, onToggle, className }: { checked: boolean; label: string; onToggle: () => void; className?: string }) {
@@ -11,12 +12,12 @@ export function SoftCheckbox({ checked, label, onToggle, className }: { checked:
       aria-pressed={checked}
       onClick={onToggle}
       className={cn(
-        "inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition",
-        checked ? "border-primary/40 bg-white text-foreground" : "border-border bg-background text-muted-foreground hover:bg-background",
+        "inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition",
+        checked ? "bg-white text-foreground" : "bg-background text-muted-foreground hover:bg-background",
         className,
       )}
     >
-      <span className={cn("grid h-4 w-4 place-items-center rounded transition", checked ? "bg-primary text-primary-foreground" : "border border-input bg-background")}>
+      <span className={cn("grid h-4 w-4 place-items-center rounded transition", checked ? "bg-primary text-primary-foreground" : "bg-background")}>
         {checked && <Check className="h-3 w-3 stroke-[3]" />}
       </span>
       {label}
@@ -24,20 +25,34 @@ export function SoftCheckbox({ checked, label, onToggle, className }: { checked:
   );
 }
 
+// 날짜는 기기 달력, 시간은 24시간 10분 단위 선택. value 형식: "2026-10-01T18:00"
+export function DateTimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const [date, time = "00:00"] = value.split("T");
+  return (
+    <div className="text-sm font-medium">
+      <p>{label}</p>
+      <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-2">
+        <input className="mt-1 w-full min-w-0 rounded-xl bg-background px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-primary/20" type="date" value={date} onChange={(event) => onChange(`${event.target.value}T${time}`)} />
+        <Select label="" value={time} onChange={(next) => onChange(`${date}T${next}`)} options={timeOptions(time).map((item) => [item, item])} />
+      </div>
+    </div>
+  );
+}
+
 export function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
-  return <label className="block text-sm font-medium">{label}<input className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
+  return <label className="block text-sm font-medium">{label}<input className="mt-1 w-full rounded-xl bg-background px-3 py-2.5 text-base outline-none transition focus:ring-2 focus:ring-primary/20" type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const validValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : defaultAccent;
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-background p-4 shadow-sm dark:border-border">
+    <div className="space-y-3 rounded-xl bg-background p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold">{label}</p>
           <p className="text-xs font-medium text-muted-foreground">{validValue.toUpperCase()}</p>
         </div>
-        <span className="h-10 w-10 shrink-0 rounded-xl border border-border" style={{ backgroundColor: validValue }} />
+        <span className="h-10 w-10 shrink-0 rounded-xl" style={{ backgroundColor: validValue }} />
       </div>
       <div className="flex flex-wrap gap-2">
         {palette.map((color) => (
@@ -45,14 +60,14 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
             key={color}
             type="button"
             aria-label={`${color} 선택`}
-            className={cn("h-9 w-9 rounded-full border-2 shadow-sm transition hover:scale-105", validValue === color ? "border-foreground" : "border-border")}
+            className={cn("h-9 w-9 rounded-full shadow-sm transition hover:scale-105", validValue === color && "ring-2 ring-foreground ring-offset-2 ring-offset-background")}
             style={{ backgroundColor: color }}
             onClick={() => onChange(color)}
           />
         ))}
       </div>
       <input
-        className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold uppercase outline-none transition focus:ring-2 focus:ring-primary/30 dark:border-border"
+        className="w-full rounded-xl bg-background px-4 py-3 text-sm font-semibold uppercase outline-none transition focus:ring-2 focus:ring-primary/30"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="#7BC7F2"
@@ -62,7 +77,7 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 }
 
 export function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-sm font-medium">{label}<textarea className="mt-1 min-h-28 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+  return <label className="block text-sm font-medium">{label}<textarea className="mt-1 min-h-28 w-full rounded-xl bg-background px-3 py-2.5 text-base outline-none transition focus:ring-2 focus:ring-primary/20" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 export function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[][] }) {
@@ -80,12 +95,12 @@ export function Select({ label, value, onChange, options }: { label: string; val
 
   return (
     <div ref={rootRef} className="relative block text-sm font-medium">
-      <p>{label}</p>
+      {label && <p>{label}</p>}
       <button
         type="button"
         className={cn(
-          "mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3 py-2.5 text-left text-base font-normal outline-none transition",
-          open ? "border-primary ring-2 ring-primary/20" : "hover:bg-muted",
+          "mt-1 flex w-full items-center justify-between gap-3 rounded-xl bg-background px-3 py-2.5 text-left text-base font-normal outline-none transition",
+          open ? "ring-2 ring-primary/20" : "hover:bg-muted",
         )}
         onClick={() => setOpen((next) => !next)}
       >
@@ -93,7 +108,7 @@ export function Select({ label, value, onChange, options }: { label: string; val
         <ChevronRight className={cn("h-5 w-5 text-muted-foreground transition", open ? "rotate-90" : "rotate-0")} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-background p-2 shadow-sm dark:border-border">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-xl bg-background p-2 shadow-sm">
           {options.length === 0 ? (
             <div className="rounded-xl px-4 py-3 text-sm text-muted-foreground">없음</div>
           ) : (

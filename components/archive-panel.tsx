@@ -171,7 +171,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
       <Panel title="과거 공연 이력 DB">
         <div>
           <input
-            className="w-full rounded-xl border border-border bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-xl bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="공연명, 곡명, 팀원 이름 검색"
@@ -216,7 +216,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
               <p className="mt-1 text-sm font-medium text-muted-foreground">{mergeBase.performanceTitle} · 팀장 {mergeBase.leaderName || "미지정"}</p>
             </div>
             <input
-              className="w-full rounded-xl border border-border bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-xl bg-background px-5 py-4 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
               value={mergeQuery}
               onChange={(event) => setMergeQuery(event.target.value)}
               placeholder="병합할 곡 검색"
@@ -229,7 +229,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
                   <button
                     key={item.id}
                     type="button"
-                    className={cn("rounded-xl border px-4 py-3 text-left transition", selected ? "border-primary bg-primary/15" : "border-border bg-background hover:bg-background")}
+                    className={cn("rounded-xl px-4 py-3 text-left transition", selected ? "bg-primary/15" : "bg-background hover:bg-background")}
                     onClick={() => setMergeSelectedIds((ids) => (ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id]))}
                   >
                     <p className="font-semibold">{splitOriginalTag(item.songTitle).title}{splitOriginalTag(item.songTitle).original && <span className="ml-2 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-xs text-white font-semibold text-amber-700">창작</span>}</p>
@@ -287,7 +287,7 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
         <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4-sm" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setEditingArchiveId("");
         }}>
-          <section className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-border bg-background p-6 shadow-2xl dark:border-border">
+          <section className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl bg-background p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between gap-3">
               <h3 className="text-xl font-semibold">곡 이력 수정</h3>
               <button type="button" className="rounded-full bg-muted px-4 py-2 text-sm font-semibold" onClick={() => setEditingArchiveId("")}>닫기</button>

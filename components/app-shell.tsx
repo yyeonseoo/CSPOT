@@ -64,11 +64,11 @@ export function AppShell({
       {menuOpen && <button type="button" aria-label="메뉴 닫기" className="fixed inset-0 z-20 bg-black/30 md:hidden" onClick={() => setMenuOpen(false)} />}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 w-64 border-r border-border bg-background p-4 transition-transform md:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 w-64 bg-background p-4 transition-transform md:translate-x-0",
           menuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="mb-4 border-b border-border px-2 pb-4">
+        <div className="mb-4 px-2 pb-4">
           <p className="text-sm font-semibold">Club Scheduler</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{adminMode ? "관리자" : "사용자"}</p>
         </div>
@@ -99,7 +99,7 @@ export function AppShell({
               <p className="truncate text-xs text-muted-foreground">
                 {currentUser.name} ({roleLabel(currentUser.role)}){adminMode && " 관리자 화면"}
               </p>
-              <h2 className="truncate text-2xl font-bold tracking-tight">{view === "calendar" ? "이번 달 일정" : nav.find(([id]) => id === view)?.[1]}</h2>
+              <h2 className="truncate text-2xl font-bold tracking-tight">{nav.find(([id]) => id === view)?.[1]}</h2>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">

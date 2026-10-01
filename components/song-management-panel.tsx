@@ -121,7 +121,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
     const block = candidateBlock(candidate);
     const conflicts = conflictsById.get(candidate.id) ?? [];
     return (
-      <button key={candidate.id} type="button" className={cn("w-full rounded-xl border bg-background p-3 text-left", conflicts.length ? "border-orange-300" : "border-transparent")} onClick={() => setSelectedId(candidate.id)}>
+      <button key={candidate.id} type="button" className={cn("w-full rounded-xl bg-background p-3 text-left", conflicts.length ? "" : "")} onClick={() => setSelectedId(candidate.id)}>
         <div className="flex items-center justify-between gap-2">
           <p className="truncate font-semibold">{songTitleOf(data, candidate.songId)}</p>
           <span className="flex shrink-0 gap-1">

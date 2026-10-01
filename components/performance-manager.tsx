@@ -6,7 +6,7 @@ import { alpha, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
-import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs, TextArea } from "@/components/ui";
+import { DateTimeField, Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs, TextArea } from "@/components/ui";
 
 export function PerformanceManager({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
   const [perf, setPerf] = useState({ title: "", startsAt: `${today()}T19:00`, endsAt: `${today()}T21:00`, location: "" });
 
   function addPerformance() {
-    if (!perf.title) return;
+    if (!perf.title.trim() || perf.startsAt >= perf.endsAt) return;
     const createdAt = nowIso();
     const performance: Performance = {
       id: uid("perf"),
@@ -69,10 +69,11 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
         <Panel title="공연 만들기">
           <div className="space-y-3">
             <Field label="공연명" value={perf.title} onChange={(value) => setPerf({ ...perf, title: value })} />
-            <Field label="시작" type="datetime-local" value={perf.startsAt} onChange={(value) => setPerf({ ...perf, startsAt: value })} />
-            <Field label="종료" type="datetime-local" value={perf.endsAt} onChange={(value) => setPerf({ ...perf, endsAt: value })} />
+            <DateTimeField label="시작" value={perf.startsAt} onChange={(value) => setPerf({ ...perf, startsAt: value })} />
+            <DateTimeField label="종료" value={perf.endsAt} onChange={(value) => setPerf({ ...perf, endsAt: value })} />
+            {perf.startsAt >= perf.endsAt && <p className="text-sm text-destructive">종료가 시작보다 늦어야 합니다.</p>}
             <Field label="장소" value={perf.location} onChange={(value) => setPerf({ ...perf, location: value })} />
-            <PrimaryButton onClick={addPerformance}>생성</PrimaryButton>
+            <PrimaryButton onClick={addPerformance} disabled={!perf.title.trim() || perf.startsAt >= perf.endsAt}>생성</PrimaryButton>
           </div>
         </Panel>
       )}
@@ -398,8 +399,8 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           <>
             <Field label="공연명" value={infoForm.title} onChange={(value) => setInfoForm({ ...infoForm, title: value })} />
             <div className="grid gap-2 sm:grid-cols-2">
-              <Field label="시작" type="datetime-local" value={infoForm.startsAt} onChange={(value) => setInfoForm({ ...infoForm, startsAt: value })} />
-              <Field label="종료" type="datetime-local" value={infoForm.endsAt} onChange={(value) => setInfoForm({ ...infoForm, endsAt: value })} />
+              <DateTimeField label="시작" value={infoForm.startsAt} onChange={(value) => setInfoForm({ ...infoForm, startsAt: value })} />
+              <DateTimeField label="종료" value={infoForm.endsAt} onChange={(value) => setInfoForm({ ...infoForm, endsAt: value })} />
             </div>
             <Field label="장소" value={infoForm.location} onChange={(value) => setInfoForm({ ...infoForm, location: value })} />
             <div className="grid grid-cols-2 gap-2">
@@ -455,14 +456,14 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           ) : (
             <div className="space-y-4">
               <input
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-xl bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
                 value={performanceMemberSearch}
                 onChange={(event) => setPerformanceMemberSearch(event.target.value)}
                 placeholder="이름이나 팀으로 검색"
               />
               <div className="flex flex-wrap gap-2">
                 {[...knownTerms, "all"].map((term) => (
-                  <button key={term} type="button" className={cn("rounded-full px-3 py-1.5 text-xs font-semibold", memberTerm === term ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground")} onClick={() => setMemberTerm(term)}>
+                  <button key={term} type="button" className={cn("rounded-full px-3 py-1.5 text-xs font-semibold", memberTerm === term ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground")} onClick={() => setMemberTerm(term)}>
                     {term === "all" ? "전체" : termLabel(term)}
                   </button>
                 ))}
@@ -491,7 +492,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             <div className="rounded-xl bg-muted p-3">
               <p className="mb-3 text-sm font-semibold">팀원 / 곡팀장</p>
               <input
-                className="mb-3 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+                className="mb-3 w-full rounded-xl bg-background px-4 py-3 text-sm font-medium outline-none transition placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
                 value={songMemberSearch}
                 onChange={(event) => setSongMemberSearch(event.target.value)}
                 placeholder="이름이나 아이디로 검색"
@@ -551,7 +552,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
       )}
       {detailTab === "songs" && (
       <Panel title="생성된 공연 곡" className="bg-background p-3 sm:p-6">
-        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-primary/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Clock3 size={20} />
@@ -594,7 +595,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">
                 시간(초)
                 <input
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30 dark:border-border"
+                  className="mt-1 w-full rounded-xl bg-background px-3 py-2.5 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
                   type="number"
                   min="0"
                   inputMode="numeric"
@@ -658,7 +659,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   >
                     <button
                       type="button"
-                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl border text-sm font-semibold tabular-nums transition", orderingSongId === song.id ? "border-primary bg-primary text-primary-foreground" : "border-primary/20 bg-background text-primary hover:bg-muted")}
+                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl text-sm font-semibold tabular-nums transition", orderingSongId === song.id ? "bg-primary text-primary-foreground" : "bg-background text-primary hover:bg-muted")}
                       aria-label={`${song.title} 순서 변경`}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -668,7 +669,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     >
                       {songIndex + 1}
                     </button>
-                    <span className={cn("absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full border transition", selectedForRuntime ? "border-primary bg-primary text-primary-foreground" : "border-primary/25 bg-background text-transparent")}>
+                    <span className={cn("absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full transition", selectedForRuntime ? "bg-primary text-primary-foreground" : "bg-background text-transparent")}>
                       <Check size={15} strokeWidth={3} />
                     </span>
                     <p className="text-lg font-semibold">{song.title}</p>
