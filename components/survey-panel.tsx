@@ -108,7 +108,8 @@ function MyAvailabilityPanel({ survey, data, currentUser, persist }: PanelProps 
 
   function save() {
     const submittedAt = nowIso();
-    const slots = dates.flatMap((date) => times.map((time) => ({ date, time, available: selected.has(slotKey(date, time)) })));
+    // 가능한 칸만 저장해서 데이터 크기를 줄인다. 없는 칸은 불가로 본다.
+    const slots = dates.flatMap((date) => times.filter((time) => selected.has(slotKey(date, time))).map((time) => ({ date, time, available: true })));
     const response: AvailabilityResponse = { id: saved?.id ?? uid("availability"), surveyId: survey.id, userId: currentUser.id, slots, submittedAt: saved?.submittedAt ?? submittedAt, updatedAt: submittedAt };
     persist({ ...data, availabilityResponses: [...data.availabilityResponses.filter((item) => item !== saved), response] });
     setMessage("저장했습니다.");

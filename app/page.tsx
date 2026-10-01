@@ -5,13 +5,16 @@ import { createInitialData, normalizeData, readData, SESSION_KEY, syncCurrentSon
 import { isAdminRole } from "@/lib/permissions";
 import { CLUB_CODE_KEY, diffData, loadRemote, saveRemote } from "@/lib/remote-data";
 import { readSession, writeSession, type Portal, type Session } from "@/lib/session";
+import { applyPattern, readPattern } from "@/lib/theme";
 import type { AppData } from "@/types/domain";
 import { AppShell } from "@/components/app-shell";
 import { ClubCodeScreen, LoginScreen } from "@/components/login-screen";
 
 // remote: 서버 DB 사용, local: DB 설정이 없어서 브라우저 저장소 사용(개발용), code: 동아리 코드 입력 대기
 type Mode = "loading" | "code" | "remote" | "local" | "error";
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 5 * 60_000;
+// 작업 기록은 계속 쌓이면 불러올 때마다 데이터가 커지므로 최근 것만 남긴다.
+const MAX_AUDIT_LOGS = 300;
 
 export default function HomePage() {
   const [data, setData] = useState<AppData | null>(null);
@@ -69,13 +72,14 @@ export default function HomePage() {
   useEffect(() => {
     setSession(readSession());
     setDark(document.documentElement.classList.contains("dark"));
+    applyPattern(readPattern());
     connect(window.localStorage.getItem(CLUB_CODE_KEY) ?? "");
     // 처음 한 번만 연결한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 다른 사람이 바꾼 내용을 가져온다. 저장 중일 때는 건너뛴다.
-  // ponytail: 1분 주기 + 화면으로 돌아올 때 전체를 다시 받는다. 인원이 많아져 느려지면 Supabase 실시간 구독으로 바꿀 것.
+  // ponytail: 5분 주기 + 화면으로 돌아올 때 전체를 다시 받는다. 인원이 많아져 느려지면 Supabase 실시간 구독으로 바꿀 것.
   useEffect(() => {
     if (mode !== "remote") return;
     const refresh = async () => {
@@ -94,7 +98,8 @@ export default function HomePage() {
   }, [mode]);
 
   function persist(next: AppData) {
-    const synced = syncCurrentSongsToArchive(next);
+    const trimmed = next.auditLogs.length > MAX_AUDIT_LOGS ? { ...next, auditLogs: next.auditLogs.slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(-MAX_AUDIT_LOGS) } : next;
+    const synced = syncCurrentSongsToArchive(trimmed);
     setData(synced);
     if (mode === "remote") save(synced);
     else writeData(synced);
