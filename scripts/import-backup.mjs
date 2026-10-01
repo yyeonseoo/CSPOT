@@ -2,7 +2,7 @@
 // 사용: node --env-file=.env.local scripts/import-backup.mjs club-scheduler-backup-2026-10-01.json
 import { readFileSync } from "node:fs";
 
-const COLLECTIONS = ["teams", "users", "performances", "songs", "songMembers", "archiveSongs", "schedules", "surveys", "availabilityResponses", "practiceCandidates", "notices", "auditLogs"];
+const COLLECTIONS = ["teams", "users", "performances", "songs", "songMembers", "archiveSongs", "schedules", "surveys", "availabilityResponses", "practiceCandidates", "notices"];
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 const file = process.argv[2];
 

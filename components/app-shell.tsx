@@ -6,7 +6,6 @@ import type { Portal } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
 import { ArchivePanel } from "@/components/archive-panel";
-import { AuditPanel } from "@/components/audit-panel";
 import { CalendarPanel } from "@/components/calendar-panel";
 import { MyPagePanel } from "@/components/my-page-panel";
 import { NoticePanel } from "@/components/notice-panel";
@@ -46,7 +45,6 @@ export function AppShell({
         ["songs", "연습 일정 관리", ClipboardList],
         ["archive", "과거 공연 이력", Archive],
         ["notices", "공지", Megaphone],
-        ["audit", "로그", ClipboardList],
         ["mypage", "마이", Settings],
       ]
     : [
@@ -117,9 +115,8 @@ export function AppShell({
           {view === "users" && <UsersPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "performances" && <PerformanceManager data={data} currentUser={currentUser} persist={persist} />}
           {view === "songs" && <SongManagementPanel data={data} currentUser={currentUser} persist={persist} />}
-          {view === "archive" && <ArchivePanel data={data} currentUser={currentUser} persist={persist} />}
+          {view === "archive" && <ArchivePanel data={data} persist={persist} />}
           {view === "notices" && <NoticePanel data={data} currentUser={currentUser} persist={persist} admin />}
-          {view === "audit" && <AuditPanel data={data} />}
           {view === "surveys" && <SurveyPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "leader" && <LeaderPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "performances-user" && <PerformanceView data={data} />}

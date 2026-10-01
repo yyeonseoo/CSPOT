@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { calendarDays, minutesToTime, monthTitle, nowIso, sameDay, timeOptions, timeToMinutes, toDateKey, toDatetimeLocal, today } from "@/lib/format";
-import { createAudit } from "@/lib/local-data";
 import { eventColor, getVisibleSchedules } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Schedule, PracticeCandidate } from "@/types/domain";
@@ -68,7 +67,6 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
       schedules: data.schedules.map((schedule) => schedule.id === editingScheduleId ? { ...schedule, title: scheduleForm.title, startsAt, endsAt, updatedAt } : schedule),
       // 확정된 연습이면 원래 요청 시간도 같이 옮겨서 관리자 화면과 맞춘다.
       practiceCandidates: data.practiceCandidates.map((candidate) => edited?.candidateId === candidate.id ? { ...candidate, startsAt, endsAt, updatedAt } : candidate),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "UPDATE_SCHEDULE", "schedules", editingScheduleId, scheduleForm)],
     });
     setEditingScheduleId(null);
   }
@@ -89,7 +87,6 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
       ...data,
       schedules: data.schedules.filter((item) => item.id !== schedule.id),
       practiceCandidates: restoredCandidates,
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "CANCEL_SCHEDULE", "schedules", schedule.id, schedule)],
     });
     if (editingScheduleId === schedule.id) setEditingScheduleId(null);
   }

@@ -46,8 +46,12 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as { upserts?: RecordRow[]; deletes?: Array<{ collection: string; id: string }> } | null;
   const known = new Set<string>(COLLECTIONS);
   const valid = (row: { collection: unknown; id: unknown }) => typeof row?.collection === "string" && known.has(row.collection) && typeof row.id === "string" && row.id !== "";
-  const upserts = body?.upserts ?? [];
-  const deletes = body?.deletes ?? [];
+  // 예전 버전 화면이 보내는 작업 기록(auditLogs)은 더 이상 저장하지 않고 무시한다.
+  const rawUpserts = body?.upserts ?? [];
+  const rawDeletes = body?.deletes ?? [];
+  if (!Array.isArray(rawUpserts) || !Array.isArray(rawDeletes)) return NextResponse.json({ error: "bad-request" }, { status: 400 });
+  const upserts = rawUpserts.filter((row) => row?.collection !== "auditLogs");
+  const deletes = rawDeletes.filter((row) => row?.collection !== "auditLogs");
   if (!Array.isArray(upserts) || !Array.isArray(deletes) || !upserts.every((row) => valid(row) && typeof row.data === "object" && row.data !== null) || !deletes.every(valid)) {
     return NextResponse.json({ error: "bad-request" }, { status: 400 });
   }

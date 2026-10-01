@@ -1,7 +1,7 @@
 import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
-import { createAudit, fixSongLeaders } from "@/lib/local-data";
+import { fixSongLeaders } from "@/lib/local-data";
 import { alpha, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
@@ -48,7 +48,7 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
       createdAt,
       updatedAt: createdAt,
     };
-    persist({ ...data, performances: [...data.performances, performance], schedules: [...data.schedules, schedule], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_PERFORMANCE", "performances", performance.id, performance)] });
+    persist({ ...data, performances: [...data.performances, performance], schedules: [...data.schedules, schedule] });
     setPerf({ title: "", startsAt: `${today()}T19:00`, endsAt: `${today()}T21:00`, location: "" });
     setTab("list");
   }
@@ -193,7 +193,6 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
       ...data,
       performances: data.performances.map((item) => item.id === performance.id ? { ...item, title, startsAt, endsAt, location: infoForm.location.trim(), updatedAt } : item),
       schedules: data.schedules.map((schedule) => schedule.type === "PERFORMANCE" && schedule.performanceId === performance.id ? { ...schedule, title, startsAt, endsAt, location: infoForm.location.trim() || undefined, updatedAt } : schedule),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "UPDATE_PERFORMANCE", "performances", performance.id, { title, startsAt, endsAt, location: infoForm.location })],
     });
     setEditingInfo(false);
   }
@@ -217,7 +216,6 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
       notices: data.notices.filter((notice) => notice.targetPerformanceId !== performance.id),
       // 현재 곡 카드(current-)는 곡이 없어지면 사라지므로 일반 이력 카드로 바꿔 남긴다.
       archiveSongs: data.archiveSongs.map((item) => item.archiveKey.startsWith(currentKeyPrefix) ? { ...item, archiveKey: `kept-${item.id}`, source: "지난 공연" } : item),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_PERFORMANCE", "performances", performance.id, { title: performance.title })],
     });
   }
 
@@ -336,7 +334,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     if (!noticeText.trim()) return;
     const createdAt = nowIso();
     const notice: Notice = { id: uid("notice"), type: "PERFORMANCE", title: `${performance.title} 공지`, content: noticeText, targetPerformanceId: performance.id, pinned: false, createdBy: currentUser.id, createdAt, updatedAt: createdAt };
-    persist({ ...data, notices: [...data.notices, notice], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_NOTICE", "notices", notice.id, notice)] });
+    persist({ ...data, notices: [...data.notices, notice] });
     setNoticeText("");
   }
 
@@ -346,7 +344,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     const createdAt = nowIso();
     const song: Song = { id: uid("song"), performanceId: performance.id, teamId: songTeamId, title: songTitle, durationSeconds: parseSongDuration(songDuration), leaderUserId, requiredPracticeCount: 0, estimatedPracticeMinutes: 120, order: data.songs.length + 1, status: "ACTIVE", createdAt, updatedAt: createdAt };
     const memberships: SongMember[] = songMemberIds.map((userId) => ({ id: uid("member"), performanceId: performance.id, songId: song.id, userId, joinedAt: createdAt }));
-    persist({ ...data, songs: [...data.songs, song], songMembers: [...data.songMembers, ...memberships], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_SONG", "songs", song.id, song)] });
+    persist({ ...data, songs: [...data.songs, song], songMembers: [...data.songMembers, ...memberships] });
     setSongTitle("");
     setSongDuration("");
     setSongMemberIds([]);
@@ -365,12 +363,10 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     const updatedAt = nowIso();
     const leaderUserId = editSongForm.memberIds.includes(editSongForm.leaderUserId) ? editSongForm.leaderUserId : editSongForm.memberIds[0];
     const nextMemberships: SongMember[] = editSongForm.memberIds.map((userId) => ({ id: uid("member"), performanceId: performance.id, songId, userId, joinedAt: updatedAt }));
-    const updatedSong = data.songs.find((song) => song.id === songId);
     persist({
       ...data,
       songs: data.songs.map((song) => song.id === songId ? { ...song, title: editSongForm.title, durationSeconds: parseSongDuration(editSongForm.duration), teamId: editSongForm.teamId, leaderUserId, updatedAt } : song),
       songMembers: [...data.songMembers.filter((member) => member.songId !== songId), ...nextMemberships],
-      auditLogs: updatedSong ? [...data.auditLogs, createAudit(currentUser, "UPDATE_SONG", "songs", songId, { ...updatedSong, ...editSongForm, leaderUserId })] : data.auditLogs,
     });
     setEditingSongId(null);
   }
@@ -387,7 +383,6 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
       songMembers: data.songMembers.filter((member) => member.songId !== songId),
       practiceCandidates: data.practiceCandidates.filter((candidate) => candidate.songId !== songId),
       schedules: data.schedules.filter((schedule) => schedule.songId !== songId),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_SONG", "songs", songId, target)],
     });
     if (editingSongId === songId) setEditingSongId(null);
   }

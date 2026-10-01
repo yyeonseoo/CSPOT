@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { formatDateTime, nowIso } from "@/lib/format";
-import { createAudit } from "@/lib/local-data";
 import { uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice } from "@/types/domain";
 import { Field, Panel, PrimaryButton, SoftCheckbox, TextArea } from "@/components/ui";
@@ -22,11 +21,10 @@ export function NoticePanel({ data, currentUser, persist, admin = false }: { dat
       persist({
         ...data,
         notices: data.notices.map((notice) => notice.id === editingId ? { ...notice, ...form, title: form.title.trim(), updatedAt: now } : notice),
-        auditLogs: [...data.auditLogs, createAudit(currentUser, "UPDATE_NOTICE", "notices", editingId, form)],
       });
     } else {
       const notice: Notice = { id: uid("notice"), type: "GENERAL", title: form.title.trim(), content: form.content, pinned: form.pinned, createdBy: currentUser.id, createdAt: now, updatedAt: now };
-      persist({ ...data, notices: [...data.notices, notice], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_NOTICE", "notices", notice.id, notice)] });
+      persist({ ...data, notices: [...data.notices, notice] });
     }
     setForm(emptyForm);
     setEditingId("");
@@ -40,7 +38,7 @@ export function NoticePanel({ data, currentUser, persist, admin = false }: { dat
 
   function remove(notice: Notice) {
     if (!window.confirm(`"${notice.title}" 공지를 삭제할까요?`)) return;
-    persist({ ...data, notices: data.notices.filter((item) => item.id !== notice.id), auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_NOTICE", "notices", notice.id, notice)] });
+    persist({ ...data, notices: data.notices.filter((item) => item.id !== notice.id)});
     if (editingId === notice.id) {
       setEditingId("");
       setForm(emptyForm);

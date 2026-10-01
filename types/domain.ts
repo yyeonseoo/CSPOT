@@ -168,18 +168,6 @@ export type Notice = {
   updatedAt: string;
 };
 
-export type AuditLog = {
-  id: string;
-  actorUserId: string;
-  actorRole: Role;
-  action: string;
-  targetType: string;
-  targetId: string;
-  before?: Record<string, unknown>;
-  after?: Record<string, unknown>;
-  createdAt: string;
-};
-
 export type AppData = {
   teams: Team[];
   users: ClubUser[];
@@ -192,5 +180,4 @@ export type AppData = {
   availabilityResponses: AvailabilityResponse[];
   practiceCandidates: PracticeCandidate[];
   notices: Notice[];
-  auditLogs: AuditLog[];
 };

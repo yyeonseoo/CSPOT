@@ -61,8 +61,7 @@ export function isAppData(value: unknown): value is AppData {
     Array.isArray(data.surveys) &&
     Array.isArray(data.availabilityResponses) &&
     Array.isArray(data.practiceCandidates) &&
-    Array.isArray(data.notices) &&
-    Array.isArray(data.auditLogs)
+    Array.isArray(data.notices)
   );
 }
 

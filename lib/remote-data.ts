@@ -13,7 +13,6 @@ export const COLLECTIONS = [
   "availabilityResponses",
   "practiceCandidates",
   "notices",
-  "auditLogs",
 ] as const satisfies readonly (keyof AppData)[];
 
 export const CLUB_CODE_KEY = "club-scheduler-club-code";

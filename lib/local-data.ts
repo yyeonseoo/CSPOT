@@ -1,4 +1,4 @@
-import type { AppData, ArchiveSong, AuditLog, ClubUser, Performance, Song, SongMember, Team } from "@/types/domain";
+import type { AppData, ArchiveSong, ClubUser, Performance, Song, SongMember, Team } from "@/types/domain";
 import { uid } from "@/lib/utils";
 
 export const STORAGE_KEY = "club-scheduler-local-data-v4";
@@ -146,7 +146,6 @@ export function createSeedData(): AppData {
     availabilityResponses: [],
     practiceCandidates: [],
     notices: [],
-    auditLogs: [],
   };
 }
 
@@ -648,15 +647,3 @@ export function createInitialData() {
   return applySeedData(createSeedData());
 }
 
-export function createAudit(actor: ClubUser, action: string, targetType: string, targetId: string, after?: Record<string, unknown>): AuditLog {
-  return {
-    id: uid("audit"),
-    actorUserId: actor.id,
-    actorRole: actor.role,
-    action,
-    targetType,
-    targetId,
-    after,
-    createdAt: now(),
-  };
-}

@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
-import { archiveYears, createAudit, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
+import { archiveYears, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
 import { archiveSourceLabel, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
-import type { AppData, ArchiveSong, ClubUser, SongMember } from "@/types/domain";
+import type { AppData, ArchiveSong, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
 import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs } from "@/components/ui";
 
-export function ArchivePanel({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
+export function ArchivePanel({ data, persist }: { data: AppData; persist: (data: AppData) => void }) {
   const [query, setQuery] = useState("");
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [mergeBaseId, setMergeBaseId] = useState("");
@@ -161,7 +161,6 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
         if (removableIds.has(item.id)) return [];
         return [item];
       }),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "MERGE_ARCHIVE_SONGS", "archiveSongs", primary.id, { mergedIds: Array.from(selectedIds), title: primary.songTitle })],
     });
     cancelMerge();
   }

@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { currentTerm, nowIso, previousTerm, termLabel } from "@/lib/format";
-import { createAudit, fixSongLeaders } from "@/lib/local-data";
+import { fixSongLeaders } from "@/lib/local-data";
 import { canManageTeams, canManageUsers, roleLabel } from "@/lib/permissions";
 import { alpha, defaultAccent, fixedTeamColors, isPastPerformance, palette, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
@@ -35,7 +35,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
     if (!teamName.trim() || !canManageTeams(currentUser.role)) return;
     const createdAt = nowIso();
     const team: Team = { id: uid("team"), name: teamName, color: fixedTeamColors[teamName] ?? palette[data.teams.length % palette.length], order: data.teams.length + 1, isActive: true, createdAt, updatedAt: createdAt };
-    persist({ ...data, teams: [...data.teams, team], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_TEAM", "teams", team.id, team)] });
+    persist({ ...data, teams: [...data.teams, team] });
     setTeamName("");
   }
 
@@ -46,14 +46,14 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
       window.alert("같은 이름의 팀이 이미 있습니다.");
       return;
     }
-    persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, name, updatedAt: nowIso() } : item), auditLogs: [...data.auditLogs, createAudit(currentUser, "RENAME_TEAM", "teams", team.id, { name })] });
+    persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, name, updatedAt: nowIso() } : item)});
   }
 
   function deleteTeam(teamId: string) {
     const teamHasUsers = data.users.some((user) => user.teamId === teamId);
     const teamHasSongs = data.songs.some((song) => song.teamId === teamId);
     if (teamHasUsers || teamHasSongs) return;
-    persist({ ...data, teams: data.teams.filter((team) => team.id !== teamId), auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_TEAM", "teams", teamId)] });
+    persist({ ...data, teams: data.teams.filter((team) => team.id !== teamId)});
   }
 
   function carryOver() {
@@ -101,7 +101,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
       createdAt,
       updatedAt: createdAt,
     };
-    persist({ ...data, users: [...data.users, user], auditLogs: [...data.auditLogs, createAudit(currentUser, "CREATE_USER", "users", user.id, user)] });
+    persist({ ...data, users: [...data.users, user] });
     setForm({ name: "", teamId: data.teams[0]?.id ?? "", role: "USER" });
     setSelectedUserId(user.id);
     if (data.users.length >= 5) setShowAllMembers(true);

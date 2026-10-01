@@ -1,7 +1,6 @@
 import { ChevronLeft, Check, X } from "lucide-react";
 import { useState } from "react";
 import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, today } from "@/lib/format";
-import { createAudit } from "@/lib/local-data";
 import { candidateBlock, findPracticeConflicts, isPastPerformance, getSongUserIds, slotKey, slotsCovering, surveyLabel, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
@@ -26,7 +25,6 @@ function approveRequests(data: AppData, currentUser: ClubUser, items: PracticeCa
     ...data,
     practiceCandidates: data.practiceCandidates.map((item) => byId.get(item.id) ?? item),
     schedules: [...data.schedules, ...schedules],
-    auditLogs: [...data.auditLogs, ...approved.map((item) => createAudit(currentUser, "APPROVE_SCHEDULE", "practiceCandidates", item.id, item))],
   };
 }
 
@@ -72,7 +70,6 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
       persist({
         ...data,
         surveys: data.surveys.map((item) => item.id === editingSurveyId ? { ...item, ...form, title: form.title.trim(), updatedAt } : item),
-        auditLogs: [...data.auditLogs, createAudit(currentUser, "UPDATE_SURVEY", "surveys", editingSurveyId, form)],
       });
       setEditingSurveyId("");
       setShowForm(false);
@@ -81,7 +78,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
     }
     const createdAt = nowIso();
     const next: ScheduleSurvey = { id: uid("survey"), createdBy: currentUser.id, ...form, title: form.title.trim(), slotMinutes: 30, status: "OPEN", createdAt, updatedAt: createdAt };
-    persist({ ...data, surveys: [...data.surveys, next], auditLogs: [...data.auditLogs, createAudit(currentUser, "OPEN_SURVEY", "surveys", next.id, next)] });
+    persist({ ...data, surveys: [...data.surveys, next] });
     setSurveyId(next.id);
     setShowForm(false);
     setForm({ ...form, title: "", performanceIds: [] });
@@ -104,7 +101,6 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
       surveys: data.surveys.filter((item) => item.id !== survey.id),
       availabilityResponses: data.availabilityResponses.filter((response) => response.surveyId !== survey.id),
       practiceCandidates: data.practiceCandidates.filter((candidate) => candidate.surveyId !== survey.id),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "DELETE_SURVEY", "surveys", survey.id, survey)],
     });
     setSurveyId("");
     setEditingSurveyId("");
@@ -262,7 +258,6 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
       ...data,
       schedules: data.schedules.filter((schedule) => !(schedule.type === "PRACTICE" && isSource(schedule))),
       practiceCandidates: data.practiceCandidates.map((item) => item.id === request.id ? { ...item, status: "PENDING" as const, reviewedBy: undefined, reviewedAt: undefined, updatedAt } : item),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "CANCEL_SCHEDULE", "practiceCandidates", request.id, request)],
     });
   }
 
@@ -278,7 +273,6 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
     persist({
       ...data,
       practiceCandidates: data.practiceCandidates.map((item) => item.id === request.id ? rejected : item),
-      auditLogs: [...data.auditLogs, createAudit(currentUser, "REJECT_SCHEDULE", "practiceCandidates", request.id, rejected)],
     });
   }
 
