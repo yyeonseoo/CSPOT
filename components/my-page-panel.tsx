@@ -1,13 +1,18 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
-import { defaultAccent, isAppData, isPastPerformance } from "@/lib/schedule";
+import { defaultAccent, isAppData, isPastPerformance, palette, teamColor } from "@/lib/schedule";
+import { applyTheme, readTheme, THEMES } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
 import { ColorField, Panel, PrimaryButton } from "@/components/ui";
 
 export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   const [performanceColors, setPerformanceColors] = useState<Record<string, string>>(currentUser.performanceColors ?? {});
   const upcomingPerformances = data.performances.filter((performance) => !isPastPerformance(performance));
+  const [theme, setTheme] = useState(() => readTheme());
+  const chooseTheme = (id: string) => { applyTheme(id); setTheme(id); };
+  const team = data.teams.find((item) => item.id === currentUser.teamId);
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +69,38 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
   return (
     <Panel title="마이페이지" className="max-w-2xl">
       <div className="space-y-4">
+        <div className="space-y-3 rounded-xl bg-muted p-4">
+          <p className="text-sm font-semibold">화면 색 <span className="font-normal text-muted-foreground">(이 기기에만 적용)</span></p>
+          <div className="grid grid-cols-4 gap-2">
+            {THEMES.map((item) => (
+              <button key={item.id} type="button" onClick={() => chooseTheme(item.id)} className={cn("space-y-1.5 rounded-xl p-1.5 text-[11px] font-medium", theme === item.id && "ring-2 ring-foreground")}>
+                {/* 바탕 위에 흰 카드와 포인트 색을 올린 작은 미리보기 */}
+                <span className="flex aspect-square flex-col justify-end gap-1 rounded-lg p-1.5" style={{ background: item.dark ? "#000" : `hsl(${item.page})` }}>
+                  <span className="h-3 rounded" style={{ background: item.dark ? "#141414" : "#fff" }} />
+                  <span className="h-3 rounded-full" style={{ background: item.accent ? `hsl(${item.accent})` : item.dark ? "#fff" : "#111" }} />
+                </span>
+                <span className="block whitespace-nowrap">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {team && (
+          <div className="space-y-3 rounded-xl bg-muted p-4">
+            <p className="text-sm font-semibold">{team.name} 팀 색 <span className="font-normal text-muted-foreground">(팀 모두에게 적용)</span></p>
+            <div className="flex flex-wrap gap-2">
+              {palette.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  aria-label={`${color} 선택`}
+                  className={cn("h-9 w-9 rounded-full", teamColor(team) === color && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}
+                  style={{ backgroundColor: color }}
+                  onClick={() => persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, color, updatedAt: nowIso() } : item) })}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         <div className="space-y-3 rounded-xl bg-muted p-4">
           <p className="text-sm font-semibold">공연 색상</p>
           {upcomingPerformances.length === 0 ? (

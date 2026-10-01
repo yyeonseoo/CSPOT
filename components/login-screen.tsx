@@ -1,4 +1,3 @@
-import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import type { Portal } from "@/lib/session";
 import { Field, segmentClass } from "@/components/ui";
@@ -7,14 +6,10 @@ export function LoginScreen({
   mode,
   setMode,
   onLogin,
-  dark,
-  toggleTheme,
 }: {
   mode: Portal;
   setMode: (mode: Portal) => void;
   onLogin: (name: string) => string | null;
-  dark: boolean;
-  toggleTheme: () => void;
 }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,12 +21,7 @@ export function LoginScreen({
 
   return (
     <main className="soft-shell flex min-h-screen flex-col px-4 py-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">Club Scheduler</p>
-        <button className="grid h-10 w-10 place-items-center rounded-full bg-card" onClick={toggleTheme} aria-label="테마 변경">
-          {dark ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
-      </div>
+      <p className="py-2.5 text-sm font-semibold">Club Scheduler</p>
 
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
         <h1 className="mb-6 text-4xl font-bold tracking-tight">동아리 일정</h1>

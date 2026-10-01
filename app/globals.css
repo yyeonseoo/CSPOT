@@ -21,6 +21,8 @@
   --input: 240 5% 86%;
   --ring: 0 0% 7%;
   --radius: 1rem;
+  --page: var(--background);
+  --page-foreground: var(--foreground);
 }
 
 .dark {
@@ -41,6 +43,8 @@
   --border: 0 0% 18%;
   --input: 0 0% 22%;
   --ring: 0 0% 98%;
+  --page: var(--background);
+  --page-foreground: var(--foreground);
 }
 
 * {
@@ -64,6 +68,13 @@ textarea {
   background: hsl(var(--accent) / 0.45);
 }
 
-.soft-shell {
-  background: hsl(var(--background));
+/* 카드 바깥 바탕과 상단 바. 테마 조합에 따라 색이 바뀐다. */
+.soft-shell,
+.page-bar {
+  background: hsl(var(--page));
+  color: hsl(var(--page-foreground));
+}
+
+.soft-shell .bg-card {
+  color: hsl(var(--card-foreground));
 }

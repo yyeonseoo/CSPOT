@@ -5,6 +5,7 @@ import { createInitialData, normalizeData, readData, SESSION_KEY, syncCurrentSon
 import { isAdminRole } from "@/lib/permissions";
 import { CLUB_CODE_KEY, diffData, loadRemote, saveRemote } from "@/lib/remote-data";
 import { readSession, writeSession, type Portal, type Session } from "@/lib/session";
+import { applyTheme, readTheme } from "@/lib/theme";
 import type { AppData } from "@/types/domain";
 import { AppShell } from "@/components/app-shell";
 import { ClubCodeScreen, LoginScreen } from "@/components/login-screen";
@@ -12,7 +13,6 @@ import { ClubCodeScreen, LoginScreen } from "@/components/login-screen";
 // remote: 서버 DB 사용, local: DB 설정이 없어서 브라우저 저장소 사용(개발용), code: 동아리 코드 입력 대기
 type Mode = "loading" | "code" | "remote" | "local" | "error";
 const REFRESH_MS = 60_000;
-const THEME_KEY = "club-scheduler-theme";
 
 export default function HomePage() {
   const [data, setData] = useState<AppData | null>(null);
@@ -21,7 +21,6 @@ export default function HomePage() {
   const [saveFailed, setSaveFailed] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [loginMode, setLoginMode] = useState<Portal>("user");
-  const [dark, setDark] = useState(false);
   const codeRef = useRef("");
   // 서버에 저장된 것으로 알고 있는 마지막 상태. 저장할 때 이것과 비교해 바뀐 항목만 보낸다.
   const serverRef = useRef<AppData | null>(null);
@@ -69,10 +68,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setSession(readSession());
-    // 기본은 검정 화면. 흰 화면을 고른 기기만 기억해 둔다.
-    const isDark = window.localStorage.getItem(THEME_KEY) !== "light";
-    document.documentElement.classList.toggle("dark", isDark);
-    setDark(isDark);
+    applyTheme(readTheme());
     connect(window.localStorage.getItem(CLUB_CODE_KEY) ?? "");
     // 처음 한 번만 연결한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,13 +118,6 @@ export default function HomePage() {
     setSession(null);
   }
 
-  function toggleTheme() {
-    const next = !dark;
-    document.documentElement.classList.toggle("dark", next);
-    window.localStorage.setItem(THEME_KEY, next ? "dark" : "light");
-    setDark(next);
-  }
-
   if (mode === "code") return <ClubCodeScreen error={codeError} onSubmit={connect} />;
 
   if (mode === "error") {
@@ -151,7 +140,7 @@ export default function HomePage() {
   );
 
   if (!currentUser) {
-    return <>{banner}<LoginScreen mode={loginMode} setMode={setLoginMode} onLogin={login} dark={dark} toggleTheme={toggleTheme} /></>;
+    return <>{banner}<LoginScreen mode={loginMode} setMode={setLoginMode} onLogin={login} /></>;
   }
 
   return (
@@ -164,8 +153,6 @@ export default function HomePage() {
         portal={session?.portal ?? "user"}
         persist={persist}
         logout={logout}
-        dark={dark}
-        toggleTheme={toggleTheme}
       />
     </>
   );

@@ -127,7 +127,7 @@ export function Select({ label, value, onChange, options }: { label: string; val
                   }}
                 >
                   <span>{labelText}</span>
-                  {selected && <Check className="h-4 w-4 text-primary" />}
+                  {selected && <Check className="h-4 w-4 text-foreground" />}
                 </button>
               );
             })

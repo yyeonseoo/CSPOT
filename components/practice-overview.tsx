@@ -123,7 +123,7 @@ export function DayTimeline({ survey, data, requests, selectedId, onSelect, high
           <div className="grid gap-x-1" style={{ minWidth: 36 + songIds.length * 76, gridTemplateColumns: `32px repeat(${songIds.length}, minmax(72px, 1fr))` }}>
             <div />
             {songIds.map((songId) => (
-              <p key={songId} className={cn("truncate pb-2 text-center text-xs font-semibold", highlightSongIds.includes(songId) && "text-primary")} title={songTitleOf(data, songId)}>
+              <p key={songId} className={cn("truncate pb-2 text-center text-xs font-semibold", highlightSongIds.includes(songId) && "underline underline-offset-4")} title={songTitleOf(data, songId)}>
                 {highlightSongIds.includes(songId) && "★ "}{songTitleOf(data, songId)}
               </p>
             ))}

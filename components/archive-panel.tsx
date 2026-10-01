@@ -180,7 +180,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
           {selectedNames.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {selectedNames.map((name) => (
-                <button key={name} type="button" className="rounded-full bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary" onClick={() => setSelectedNames((names) => names.filter((item) => item !== name))}>
+                <button key={name} type="button" className="rounded-full bg-primary/15 px-3 py-1.5 text-xs font-semibold text-foreground" onClick={() => setSelectedNames((names) => names.filter((item) => item !== name))}>
                   {name} 지우기
                 </button>
               ))}
@@ -210,7 +210,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
         <Panel title="곡 병합">
           <div className="space-y-4">
             <div className="rounded-2xl bg-primary/10 p-4">
-              <p className="text-sm font-semibold text-primary">기준 카드</p>
+              <p className="text-sm font-semibold text-foreground">기준 카드</p>
               <p className="mt-1 text-lg font-semibold">{splitOriginalTag(mergeBase.songTitle).title}{splitOriginalTag(mergeBase.songTitle).original && <span className="ml-2 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-xs text-white font-semibold text-amber-700">창작</span>}</p>
               <p className="mt-1 text-sm font-medium text-muted-foreground">{mergeBase.performanceTitle} · 팀장 {mergeBase.leaderName || "미지정"}</p>
             </div>
@@ -266,7 +266,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
                     <p className="text-sm font-medium text-neutral-700">{item.performanceTitle} · 팀장 {item.leaderName || "미지정"}{item.durationSeconds ? ` · ${formatSongDuration(item.durationSeconds)}` : ""}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedNames.length > 0 && <span className="w-fit rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">{selectedMatchCount}/{selectedNames.length}명 일치</span>}
+                    {selectedNames.length > 0 && <span className="w-fit rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-foreground">{selectedMatchCount}/{selectedNames.length}명 일치</span>}
                     <span className="w-fit rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-900">{archiveSourceLabel(item)}</span>
                   </div>
                 </div>
@@ -321,7 +321,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
               <PrimaryButton onClick={saveArchiveEdit}>수정 저장</PrimaryButton>
               <button
                 type="button"
-                className="rounded-xl bg-primary/12 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20"
+                className="rounded-xl bg-primary/12 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-primary/20"
                 onClick={() => {
                   const itemId = editingArchiveId;
                   setEditingArchiveId("");

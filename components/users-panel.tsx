@@ -165,7 +165,7 @@ export function UsersPanel({ data, currentUser, persist }: { data: AppData; curr
             })}
           </div>
           {carryOverUsers.length > 0 && (
-            <button type="button" className="mb-4 w-full rounded-xl px-4 py-3 text-sm font-semibold text-primary" onClick={carryOver}>
+            <button type="button" className="mb-4 w-full rounded-xl px-4 py-3 text-sm font-semibold text-foreground" onClick={carryOver}>
               {termLabel(prevTerm)} 멤버 {carryOverUsers.length}명 불러오기
             </button>
           )}

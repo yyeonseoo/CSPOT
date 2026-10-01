@@ -46,7 +46,7 @@ export function performanceColor(performance: Performance, user: ClubUser) {
 
 export function teamColor(team?: Team) {
   if (!team) return defaultAccent;
-  return fixedTeamColors[team.name] ?? team.color ?? defaultAccent;
+  return palette.includes(team.color) ? team.color : fixedTeamColors[team.name] ?? defaultAccent;
 }
 
 export function alpha(hex: string, opacity = "33") {

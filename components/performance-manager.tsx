@@ -553,7 +553,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               <Clock3 size={20} />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-primary">선택 곡 러닝타임</p>
+              <p className="text-sm font-semibold text-foreground">선택 곡 러닝타임</p>
               <p className="mt-0.5 text-xs font-medium text-muted-foreground">
                 {selectedRuntimeSongs.length > 0 ? `${selectedRuntimeSongs.length}/${songs.length}곡 선택` : "곡 카드를 눌러 선택"}
                 {missingRuntimeCount > 0 ? ` · 시간 미입력 ${missingRuntimeCount}곡 제외` : ""}
@@ -572,7 +572,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             </div>
             <button
               type="button"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background text-primary shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-35"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background text-foreground shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-35"
               disabled={selectedRuntimeSongs.length === 0}
               onClick={exportSelectedSetlist}
               aria-label="선택 곡 셋리스트 엑셀 내보내기"
@@ -616,7 +616,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       const song = songs.find((item) => item.id === runtimeBreak.afterSongId);
                       if (!song) return null;
                       return (
-                        <button key={runtimeBreak.afterSongId} type="button" className="inline-flex items-center gap-2 rounded-full bg-primary/12 px-3 py-2 text-xs font-semibold text-primary" onClick={() => removeRuntimeBreak(runtimeBreak.afterSongId)}>
+                        <button key={runtimeBreak.afterSongId} type="button" className="inline-flex items-center gap-2 rounded-full bg-primary/12 px-3 py-2 text-xs font-semibold text-foreground" onClick={() => removeRuntimeBreak(runtimeBreak.afterSongId)}>
                           {song.title} 뒤 · {formatSongDuration(runtimeBreak.durationSeconds)}
                           <Trash2 size={13} />
                         </button>
@@ -654,7 +654,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   >
                     <button
                       type="button"
-                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl text-sm font-semibold tabular-nums transition", orderingSongId === song.id ? "bg-primary text-primary-foreground" : "bg-background text-primary hover:bg-muted")}
+                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl text-sm font-semibold tabular-nums transition", orderingSongId === song.id ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted")}
                       aria-label={`${song.title} 순서 변경`}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -680,7 +680,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                             <button
                               key={position}
                               type="button"
-                              className={cn("grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold tabular-nums transition", position === songIndex + 1 ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20")}
+                              className={cn("grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold tabular-nums transition", position === songIndex + 1 ? "bg-primary text-primary-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20")}
                               onClick={() => changeSongOrder(song.id, position)}
                             >
                               {position}

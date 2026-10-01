@@ -151,7 +151,7 @@ export function AvailabilityBreakdown({ survey, data, memberIds, date, times }: 
       {segments.length > 1 ? (
         segments.map((segment) => (
           <div key={segment.start} className="grid grid-cols-[104px_1fr] gap-2">
-            <span className="font-medium tabular-nums">{segment.start}~{segment.end} <span className="text-primary">{segment.userIds.length}명</span></span>
+            <span className="font-medium tabular-nums">{segment.start}~{segment.end} <span className="text-foreground">{segment.userIds.length}명</span></span>
             <span className="text-muted-foreground">{names(segment.userIds) || "없음"}</span>
           </div>
         ))

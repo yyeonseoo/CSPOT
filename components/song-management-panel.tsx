@@ -300,7 +300,7 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
           <LocationField value={edit.location} onChange={(value) => setEdit({ ...edit, location: value })} />
         </>
       ) : (
-        <p className="rounded-xl bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">확정됨: {formatSlotDate(edit.date)} {edit.start}~{edit.end}, {request.location}</p>
+        <p className="rounded-xl bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground">확정됨: {formatSlotDate(edit.date)} {edit.start}~{edit.end}, {request.location}</p>
       )}
       {conflicts.length > 0 && (
         <div className="space-y-1 rounded-xl bg-orange-50 p-3 text-sm dark:bg-orange-500/10">

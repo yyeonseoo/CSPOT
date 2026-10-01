@@ -121,7 +121,7 @@ function MyAvailabilityPanel({ survey, data, currentUser, persist }: PanelProps 
         <p className="text-sm font-medium text-muted-foreground">{survey.startDate.slice(5).replace("-", ".")} ~ {survey.endDate.slice(5).replace("-", ".")}{!open && " (마감)"}</p>
         <AvailabilityGrid dates={dates} times={times} selected={selected} disabled={!open} onChange={(update) => { setSelected(update); setMessage(""); }} />
         {open && <PrimaryButton onClick={save}>{saved ? "응답 수정" : "응답 저장"}</PrimaryButton>}
-        {message && <p className="text-sm font-semibold text-primary">{message}</p>}
+        {message && <p className="text-sm font-semibold text-foreground">{message}</p>}
       </div>
     </Panel>
   );
@@ -184,7 +184,7 @@ function LeaderRequestForm({ survey, song, data, currentUser, persist }: PanelPr
         );
       })}
       {open && <PrimaryButton onClick={send} disabled={blocks.length === 0 && pending.length === 0}>연습 일정 전송{blocks.length > 0 && ` (${blocks.length}건)`}</PrimaryButton>}
-      {message && <p className="text-sm font-semibold text-primary">{message}</p>}
+      {message && <p className="text-sm font-semibold text-foreground">{message}</p>}
       {reviewed.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground">처리 결과</p>
