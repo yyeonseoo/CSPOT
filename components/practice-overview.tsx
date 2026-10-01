@@ -45,8 +45,8 @@ export function RequestGrid({ survey, data, requests, selectedSlot, onSelectSlot
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3 text-xs font-medium text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-[#00E5FF]" />요청</span>
-        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-[#FF8A00]" />겹침</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-[#6FE3F2]" />요청</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-[#FFB061]" />겹침</span>
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-primary" />확정</span>
         <span>숫자 = 팀 수</span>
       </div>
@@ -66,7 +66,7 @@ export function RequestGrid({ survey, data, requests, selectedSlot, onSelectSlot
               aria-label={`${formatSlotDate(date)} ${time} 요청 ${items.length}팀`}
               className={cn(
                 "block h-full w-full text-[10px] font-semibold leading-none disabled:cursor-default",
-                items.length === 0 ? "bg-background" : conflict ? "bg-[#FF8A00] text-neutral-900" : allApproved ? "bg-primary text-primary-foreground" : "bg-[#00E5FF] text-neutral-800",
+                items.length === 0 ? "bg-background" : conflict ? "bg-[#FFB061] text-neutral-900" : allApproved ? "bg-primary text-primary-foreground" : "bg-[#6FE3F2] text-neutral-800",
                 selectedSlot === key && "ring-2 ring-inset ring-foreground",
               )}
               onClick={() => onSelectSlot?.(key)}
@@ -152,7 +152,7 @@ export function DayTimeline({ survey, data, requests, selectedId, onSelect, high
                         disabled={!onSelect}
                         className={cn(
                           "absolute inset-x-1 overflow-hidden rounded-xl px-1.5 py-1 text-left text-[11px] font-semibold leading-tight shadow-sm disabled:cursor-default",
-                          approved ? "bg-primary text-primary-foreground" : conflict ? "bg-[#FF8A00] text-neutral-900" : "bg-background text-foreground",
+                          approved ? "bg-primary text-primary-foreground" : conflict ? "bg-[#FFB061] text-neutral-900" : "bg-background text-foreground",
                           selectedId === block.request.id && "ring-2 ring-foreground",
                         )}
                         style={{ top: timeToMinutes(block.start) - from, height: timeToMinutes(block.end) - timeToMinutes(block.start) }}

@@ -54,24 +54,31 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
         </div>
         <span className="h-10 w-10 shrink-0 rounded-xl shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)]" style={{ backgroundColor: validValue }} />
       </div>
-      <div className="flex flex-wrap gap-2">
-        {pickColors.map((color) => (
-          <button
-            key={color}
-            type="button"
-            aria-label={`${color} 선택`}
-            className={cn("h-9 w-9 rounded-full shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)] transition hover:scale-105", validValue === color && "ring-2 ring-foreground ring-offset-2 ring-offset-background")}
-            style={{ backgroundColor: color }}
-            onClick={() => onChange(color)}
-          />
-        ))}
-      </div>
+      <ColorDots value={validValue} onChange={onChange} />
       <input
         className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-semibold uppercase outline-none transition focus:ring-2 focus:ring-primary/30"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="#7BC7F2"
       />
+    </div>
+  );
+}
+
+// 네온 + 회색 + 검정 + 흰색 중에서 고르는 동그라미 줄
+export function ColorDots({ value, onChange, small }: { value: string; onChange: (color: string) => void; small?: boolean }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {pickColors.map((color) => (
+        <button
+          key={color}
+          type="button"
+          aria-label={`${color} 선택`}
+          className={cn("rounded-full shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)] transition hover:scale-105", small ? "h-7 w-7" : "h-9 w-9", value.toUpperCase() === color && "ring-2 ring-foreground ring-offset-2 ring-offset-background")}
+          style={{ backgroundColor: color }}
+          onClick={() => onChange(color)}
+        />
+      ))}
     </div>
   );
 }

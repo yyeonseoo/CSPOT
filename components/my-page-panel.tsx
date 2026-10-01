@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
-import { defaultAccent, isAppData, isPastPerformance, pickColors, teamColor } from "@/lib/schedule";
+import { defaultAccent, isAppData, isPastPerformance, teamColor } from "@/lib/schedule";
 import { applyTheme, readTheme, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
-import { ColorField, Panel, PrimaryButton } from "@/components/ui";
+import { ColorDots, ColorField, Panel, PrimaryButton } from "@/components/ui";
 
 export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   const [performanceColors, setPerformanceColors] = useState<Record<string, string>>(currentUser.performanceColors ?? {});
@@ -87,18 +87,7 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
         {team && (
           <div className="space-y-3 rounded-xl bg-muted p-4">
             <p className="text-sm font-semibold">{team.name} 팀 색 <span className="font-normal text-muted-foreground">(팀 모두에게 적용)</span></p>
-            <div className="flex flex-wrap gap-2">
-              {pickColors.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  aria-label={`${color} 선택`}
-                  className={cn("h-9 w-9 rounded-full shadow-[inset_0_0_0_1px_rgba(128,128,128,0.45)]", teamColor(team) === color && "ring-2 ring-foreground ring-offset-2 ring-offset-muted")}
-                  style={{ backgroundColor: color }}
-                  onClick={() => persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, color, updatedAt: nowIso() } : item) })}
-                />
-              ))}
-            </div>
+            <ColorDots value={teamColor(team)} onChange={(color) => persist({ ...data, teams: data.teams.map((item) => item.id === team.id ? { ...item, color, updatedAt: nowIso() } : item) })} />
           </div>
         )}
         <div className="space-y-3 rounded-xl bg-muted p-4">

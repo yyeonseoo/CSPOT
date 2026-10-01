@@ -1,11 +1,11 @@
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { calendarDays, minutesToTime, monthTitle, nowIso, sameDay, timeOptions, timeToMinutes, toDateKey, toDatetimeLocal, today } from "@/lib/format";
-import { eventColor, getVisibleSchedules } from "@/lib/schedule";
+import { eventColor, getVisibleSchedules, personalColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Schedule, PracticeCandidate } from "@/types/domain";
 import { CalendarEventPill, NoticeCard, ScheduleRow } from "@/components/items";
-import { DateTimeField, Field, IconButton, Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
+import { ColorDots, DateTimeField, Field, IconButton, Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -15,10 +15,11 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
   const [calTab, setCalTab] = useState<"calendar" | "upcoming" | "notice">("calendar");
   const [showCreate, setShowCreate] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
-  const [scheduleForm, setScheduleForm] = useState({ title: "", startsAt: "", endsAt: "" });
+  const [scheduleForm, setScheduleForm] = useState({ title: "", startsAt: "", endsAt: "", color: "" });
   const [personalTitle, setPersonalTitle] = useState("");
   const [personalStart, setPersonalStart] = useState("18:00");
   const [personalEnd, setPersonalEnd] = useState("19:00");
+  const [personalColorPick, setPersonalColorPick] = useState(personalColor);
   const visibleSchedules = useMemo(() => getVisibleSchedules(data, currentUser, adminMode), [adminMode, currentUser, data]);
   const monthDays = calendarDays(month);
   const selectedEvents = visibleSchedules.filter((schedule) => toDateKey(new Date(schedule.startsAt)) === selectedDate);
@@ -37,7 +38,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
       title: personalTitle,
       startsAt: new Date(`${selectedDate}T${personalStart}`).toISOString(),
       endsAt: new Date(`${selectedDate}T${personalEnd}`).toISOString(),
-      color: "#AAB2BD",
+      color: personalColorPick,
       ownerUserId: currentUser.id,
       visibility: "PRIVATE",
       status: "CONFIRMED",
@@ -52,7 +53,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
 
   function startEditSchedule(schedule: Schedule) {
     setEditingScheduleId(schedule.id);
-    setScheduleForm({ title: schedule.title, startsAt: toDatetimeLocal(schedule.startsAt), endsAt: toDatetimeLocal(schedule.endsAt) });
+    setScheduleForm({ title: schedule.title, startsAt: toDatetimeLocal(schedule.startsAt), endsAt: toDatetimeLocal(schedule.endsAt), color: schedule.type === "PERSONAL" ? eventColor(schedule, data, currentUser) : "" });
     setShowCreate(false);
   }
 
@@ -64,7 +65,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
     const edited = data.schedules.find((schedule) => schedule.id === editingScheduleId);
     persist({
       ...data,
-      schedules: data.schedules.map((schedule) => schedule.id === editingScheduleId ? { ...schedule, title: scheduleForm.title, startsAt, endsAt, updatedAt } : schedule),
+      schedules: data.schedules.map((schedule) => schedule.id === editingScheduleId ? { ...schedule, title: scheduleForm.title, startsAt, endsAt, ...(scheduleForm.color && { color: scheduleForm.color }), updatedAt } : schedule),
       // 확정된 연습이면 원래 요청 시간도 같이 옮겨서 관리자 화면과 맞춘다.
       practiceCandidates: data.practiceCandidates.map((candidate) => edited?.candidateId === candidate.id ? { ...candidate, startsAt, endsAt, updatedAt } : candidate),
     });
@@ -169,6 +170,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
               <Field label="일정 제목" value={scheduleForm.title} onChange={(value) => setScheduleForm({ ...scheduleForm, title: value })} />
               <DateTimeField label="시작" value={scheduleForm.startsAt} onChange={(value) => setScheduleForm({ ...scheduleForm, startsAt: value })} />
               <DateTimeField label="종료" value={scheduleForm.endsAt} onChange={(value) => setScheduleForm({ ...scheduleForm, endsAt: value })} />
+              {scheduleForm.color && <div className="text-sm font-medium"><p className="mb-2">색</p><ColorDots value={scheduleForm.color} onChange={(color) => setScheduleForm({ ...scheduleForm, color })} /></div>}
               {scheduleForm.startsAt >= scheduleForm.endsAt && <p className="text-sm text-destructive">종료가 시작보다 늦어야 합니다.</p>}
               <PrimaryButton onClick={saveScheduleEdit} disabled={!scheduleForm.title.trim() || scheduleForm.startsAt >= scheduleForm.endsAt}>수정 저장</PrimaryButton>
               <button className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setEditingScheduleId(null)}>닫기</button>
@@ -183,6 +185,7 @@ export function CalendarPanel({ data, currentUser, adminMode, persist }: { data:
                 <Select label="시작" value={personalStart} onChange={(value) => { setPersonalStart(value); if (personalEnd <= value) setPersonalEnd(minutesToTime(Math.min(24 * 60 - 10, timeToMinutes(value) + 60))); }} options={timeOptions(personalStart).map((item) => [item, item])} />
                 <Select label="종료" value={personalEnd} onChange={setPersonalEnd} options={timeOptions(personalEnd).filter((item) => item > personalStart).map((item) => [item, item])} />
               </div>
+              <div className="text-sm font-medium"><p className="mb-2">색</p><ColorDots value={personalColorPick} onChange={setPersonalColorPick} /></div>
               <PrimaryButton onClick={addPersonalSchedule} disabled={!personalTitle.trim() || personalEnd <= personalStart}>개인 일정 추가</PrimaryButton>
               <button className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setShowCreate(false)}>닫기</button>
             </div>

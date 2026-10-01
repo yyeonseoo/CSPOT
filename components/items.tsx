@@ -31,7 +31,7 @@ export function ScheduleRow({ schedule, data, currentUser, editable = false, onE
 }
 
 export function NoticeCard({ notice }: { notice: Notice }) {
-  return <div className="rounded-2xl bg-[#FFF200] p-4 text-neutral-900"><p className="font-semibold">{notice.title}</p><p className="mt-1 text-sm leading-6 text-neutral-700">{notice.content}</p></div>;
+  return <div className="rounded-2xl bg-[#F7EE6A] p-4 text-neutral-900"><p className="font-semibold">{notice.title}</p><p className="mt-1 text-sm leading-6 text-neutral-700">{notice.content}</p></div>;
 }
 
 export function UserPill({ user, data }: { user: ClubUser; data: AppData }) {

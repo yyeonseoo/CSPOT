@@ -112,7 +112,7 @@ export function AppShell({
           {view === "notices" && <NoticePanel data={data} currentUser={currentUser} persist={persist} admin />}
           {view === "surveys" && <SurveyPanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "leader" && <LeaderPanel data={data} currentUser={currentUser} persist={persist} />}
-          {view === "performances-user" && <PerformanceView data={data} />}
+          {view === "performances-user" && <PerformanceView data={data} currentUser={currentUser} />}
           {view === "notices-user" && <NoticePanel data={data} currentUser={currentUser} persist={persist} />}
           {view === "mypage" && <MyPagePanel data={data} currentUser={currentUser} adminMode={adminMode} persist={persist} />}
         </div>

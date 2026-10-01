@@ -2,18 +2,34 @@ import { minutesToTime, timeToMinutes, toDatetimeLocal } from "@/lib/format";
 import { archiveYears } from "@/lib/local-data";
 import type { AppData, ArchiveSong, ClubUser, Performance, PracticeCandidate, Schedule, ScheduleSurvey, Team } from "@/types/domain";
 
-export const defaultAccent = "#00E5FF";
+export const defaultAccent = "#6FE3F2";
 
 export const fixedTeamColors: Record<string, string> = {
-  "춤": "#00E5FF",
-  "랩": "#C77DFF",
-  "기획": "#39FF14",
+  "춤": "#6FE3F2",
+  "랩": "#C9A0FF",
+  "기획": "#8EF07A",
 };
 
-export const palette = ["#00E5FF", "#FFF200", "#39FF14", "#FF4FD8", "#C77DFF", "#FF8A00", "#00FFB3"];
+export const palette = ["#6FE3F2", "#F7EE6A", "#8EF07A", "#F58AD9", "#C9A0FF", "#FFB061", "#6FF0C5"];
+
+// 예전에 저장된 쨍한 네온 색을 지금 색으로 바꿔 보여준다.
+const olderColors: Record<string, string> = {
+  "#00E5FF": "#6FE3F2",
+  "#FFF200": "#F7EE6A",
+  "#39FF14": "#8EF07A",
+  "#FF4FD8": "#F58AD9",
+  "#C77DFF": "#C9A0FF",
+  "#FF8A00": "#FFB061",
+  "#00FFB3": "#6FF0C5",
+};
+
+export function currentColor(color: string) {
+  return olderColors[color.toUpperCase()] ?? color;
+}
 
 // 사람이 직접 고르는 색. 자동으로 정하는 색은 네온만 쓴다.
-export const pickColors = [...palette, "#000000", "#FFFFFF"];
+export const pickColors = [...palette, "#A1A1AA", "#000000", "#FFFFFF"];
+export const personalColor = "#A1A1AA";
 
 // 색 바탕 위 글자색. 검정 바탕일 때만 흰 글씨.
 export function inkOn(color: string) {
@@ -49,12 +65,14 @@ export function performanceAccent(performance: Performance) {
 }
 
 export function performanceColor(performance: Performance, user: ClubUser) {
-  return user.performanceColors?.[performance.id] ?? performanceAccent(performance);
+  const picked = user.performanceColors?.[performance.id];
+  return picked ? currentColor(picked) : performanceAccent(performance);
 }
 
 export function teamColor(team?: Team) {
   if (!team) return defaultAccent;
-  return pickColors.includes(team.color) ? team.color : fixedTeamColors[team.name] ?? defaultAccent;
+  const color = currentColor(team.color ?? "");
+  return pickColors.includes(color) ? color : fixedTeamColors[team.name] ?? defaultAccent;
 }
 
 export function alpha(hex: string, opacity = "33") {
@@ -80,7 +98,7 @@ export function isAppData(value: unknown): value is AppData {
 }
 
 export function eventColor(schedule: Schedule, data: AppData, currentUser: ClubUser) {
-  if (schedule.type === "PERSONAL") return "#D4D4D8";
+  if (schedule.type === "PERSONAL") return schedule.color && pickColors.includes(currentColor(schedule.color)) ? currentColor(schedule.color) : personalColor;
   // 연습은 곡마다 다른 색
   if (schedule.songId) {
     const index = data.songs.findIndex((song) => song.id === schedule.songId);
@@ -90,7 +108,7 @@ export function eventColor(schedule: Schedule, data: AppData, currentUser: ClubU
     const performance = data.performances.find((item) => item.id === schedule.performanceId);
     if (performance) return performanceColor(performance, currentUser);
   }
-  return schedule.color ?? defaultAccent;
+  return currentColor(schedule.color ?? defaultAccent);
 }
 
 export function getSurveyTimes(survey: ScheduleSurvey) {

@@ -2,7 +2,7 @@ import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
-import { alpha, isPastPerformance, palette, teamColor, performanceAccent, inkOn } from "@/lib/schedule";
+import { alpha, isPastPerformance, palette, teamColor, performanceColor, inkOn } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -56,9 +56,9 @@ export function PerformanceManager({ data, currentUser, persist }: { data: AppDa
   const upcoming = data.performances.filter((performance) => !isPastPerformance(performance)).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const past = data.performances.filter((performance) => isPastPerformance(performance)).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   const performanceCard = (performance: Performance) => (
-    <button key={performance.id} style={{ backgroundColor: performanceAccent(performance) }} className={cn("rounded-2xl p-4 text-left text-neutral-900 transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
+    <button key={performance.id} style={{ backgroundColor: performanceColor(performance, currentUser), color: inkOn(performanceColor(performance, currentUser)) }} className={cn("rounded-2xl p-4 text-left transition", selected?.id === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")} onClick={() => setSelectedId(selected?.id === performance.id ? null : performance.id)}>
       <p className="font-semibold">{performance.title}</p>
-      <p className="mt-1 text-sm text-neutral-700">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
+      <p className="mt-1 text-sm opacity-70">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
     </button>
   );
 
@@ -640,8 +640,8 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               return (
                 <SwipeActions key={song.id} onEdit={() => startEditSong(song)} onDelete={() => deleteSong(song.id)}>
                   <div
-                    className={cn("relative cursor-pointer rounded-2xl p-4 pl-16 pr-14 text-neutral-900 transition", selectedForRuntime && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
-                    style={{ backgroundColor: teamColor(team) }}
+                    className={cn("relative cursor-pointer rounded-2xl p-4 pl-16 pr-14 transition", selectedForRuntime && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
+                    style={{ backgroundColor: teamColor(team), color: inkOn(teamColor(team)) }}
                     role="button"
                     tabIndex={0}
                     aria-pressed={selectedForRuntime}
@@ -668,7 +668,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       <Check size={15} strokeWidth={3} />
                     </span>
                     <p className="text-lg font-semibold">{song.title}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm opacity-70">
                       {team?.name ?? "팀 없음"} · 팀장 {data.users.find((user) => user.id === song.leaderUserId)?.name ?? "미지정"}
                       {song.durationSeconds ? ` · ${formatSongDuration(song.durationSeconds)}` : ""}
                     </p>

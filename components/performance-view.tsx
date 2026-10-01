@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { formatDateTime, formatSongDuration } from "@/lib/format";
-import { isPastPerformance, teamColor, performanceAccent, inkOn } from "@/lib/schedule";
+import { isPastPerformance, teamColor, performanceColor, inkOn } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
-import type { AppData, Performance } from "@/types/domain";
+import type { AppData, Performance, ClubUser } from "@/types/domain";
 import { UserPill } from "@/components/items";
 import { Panel, Tabs } from "@/components/ui";
 
 // 일반 사용자용 공연 보기. 수정 기능 없이 공연 정보, 곡 팀, 참여 인원만 보여준다.
-export function PerformanceView({ data }: { data: AppData }) {
+export function PerformanceView({ data, currentUser }: { data: AppData; currentUser: ClubUser }) {
   const upcoming = data.performances.filter((performance) => !isPastPerformance(performance)).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const past = data.performances.filter((performance) => isPastPerformance(performance)).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   const [selectedId, setSelectedId] = useState(upcoming[0]?.id ?? "");
@@ -17,12 +17,12 @@ export function PerformanceView({ data }: { data: AppData }) {
     <button
       key={performance.id}
       type="button"
-      style={{ backgroundColor: performanceAccent(performance) }}
-      className={cn("rounded-2xl p-4 text-left text-neutral-900", selectedId === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
+      style={{ backgroundColor: performanceColor(performance, currentUser), color: inkOn(performanceColor(performance, currentUser)) }}
+      className={cn("rounded-2xl p-4 text-left", selectedId === performance.id && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
       onClick={() => setSelectedId(selectedId === performance.id ? "" : performance.id)}
     >
       <p className="font-semibold">{performance.title}</p>
-      <p className="mt-1 text-sm text-neutral-700">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
+      <p className="mt-1 text-sm opacity-70">{formatDateTime(performance.startsAt)} · {performance.location || "장소 미정"}</p>
     </button>
   );
 

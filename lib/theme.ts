@@ -9,11 +9,11 @@ const black = "0 0% 7%";
 export const THEMES: Theme[] = [
   { id: "black", label: "블랙", dark: true },
   { id: "white", label: "화이트", page: "0 0% 92%", pageText: black },
-  { id: "purple-green", label: "보라 & 초록", page: "255 100% 62%", pageText: white, accent: "78 100% 62%", accentText: black },
-  { id: "purple-yellow", label: "보라 & 노랑", page: "255 100% 62%", pageText: white, accent: "57 100% 50%", accentText: black },
+  { id: "purple-green", label: "보라 & 초록", page: "255 100% 62%", pageText: white, accent: "100 80% 72%", accentText: black },
+  { id: "purple-yellow", label: "보라 & 노랑", page: "255 100% 62%", pageText: white, accent: "56 90% 69%", accentText: black },
   { id: "gray-pink", label: "회색 & 핑크", page: "240 3% 20%", pageText: white, accent: "313 100% 65%", accentText: black },
-  { id: "red-yellow", label: "다홍 & 노랑", page: "9 100% 59%", pageText: white, accent: "57 100% 50%", accentText: black },
-  { id: "blue-yellow", label: "파랑 & 노랑", page: "228 100% 56%", pageText: white, accent: "57 100% 50%", accentText: black },
+  { id: "red-yellow", label: "다홍 & 노랑", page: "9 100% 59%", pageText: white, accent: "56 90% 69%", accentText: black },
+  { id: "blue-yellow", label: "파랑 & 노랑", page: "228 100% 56%", pageText: white, accent: "56 90% 69%", accentText: black },
   { id: "lime-black", label: "라임 & 블랙", page: "78 100% 62%", pageText: black },
 ];
 

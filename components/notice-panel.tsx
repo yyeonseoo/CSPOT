@@ -64,7 +64,7 @@ export function NoticePanel({ data, currentUser, persist, admin = false }: { dat
         <div className="space-y-2">
           {visibleNotices.length === 0 && <p className="text-sm text-muted-foreground">공지가 없습니다.</p>}
           {visibleNotices.map((notice) => (
-            <article key={notice.id} className="rounded-2xl bg-[#FFF200] p-4 text-neutral-900">
+            <article key={notice.id} className="rounded-2xl bg-[#F7EE6A] p-4 text-neutral-900">
               <div className="flex items-start justify-between gap-3">
                 <p className="min-w-0 break-words font-semibold">
                   {notice.pinned && <span className="mr-1.5 rounded-full bg-neutral-900 px-2 py-0.5 align-middle text-[11px] font-semibold text-white">고정</span>}
