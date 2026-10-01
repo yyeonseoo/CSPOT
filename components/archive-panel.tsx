@@ -3,11 +3,11 @@ import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
 import { archiveYears, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
 import { archiveSourceLabel, inkOn, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
-import type { AppData, ArchiveSong, SongMember } from "@/types/domain";
+import type { AppData, ArchiveSong, SongMember, ClubUser } from "@/types/domain";
 import { UserPill } from "@/components/items";
 import { Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs } from "@/components/ui";
 
-export function ArchivePanel({ data, persist }: { data: AppData; persist: (data: AppData) => void }) {
+export function ArchivePanel({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
   const [query, setQuery] = useState("");
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [mergeBaseId, setMergeBaseId] = useState("");
@@ -256,7 +256,7 @@ export function ArchivePanel({ data, persist }: { data: AppData; persist: (data:
               <SwipeActions key={item.id} onEdit={() => beginArchiveEdit(item)} onDelete={() => deleteArchive(item)}>
               <div
                 className="cursor-pointer rounded-2xl p-4 transition"
-                style={{ backgroundColor: teamColor(team), color: inkOn(teamColor(team)) }}
+                style={{ backgroundColor: teamColor(team, currentUser), color: inkOn(teamColor(team, currentUser)) }}
                 onClick={() => handleArchiveClick(item)}
                 onDoubleClick={() => handleArchiveDoubleClick(item)}
               >

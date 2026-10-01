@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { nowIso, today } from "@/lib/format";
 import { normalizeData } from "@/lib/local-data";
-import { isAppData, isPastPerformance, performanceColor, teamColor } from "@/lib/schedule";
+import { isAppData, isPastPerformance, performanceColor, songColor, teamColor } from "@/lib/schedule";
 import { applyTheme, readTheme, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
@@ -20,10 +20,13 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 공연 색은 나에게만 보이는 색, 고르면 바로 저장
-  function setPerformanceColor(color: string) {
-    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, performanceColors: { ...user.performanceColors, [performanceId]: color }, updatedAt: nowIso() } : user) });
+  // 이 페이지의 색은 모두 나에게만 보이는 색. 고르면 바로 저장.
+  type ColorMap = "performanceColors" | "teamColors" | "songColors";
+  function setMyColor(key: ColorMap, id: string, color: string) {
+    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, [key]: { ...user[key], [id]: color }, updatedAt: nowIso() } : user) });
   }
+  // 고른 공연에서 내가 팀장이거나 팀원인 곡
+  const mySongs = data.songs.filter((song) => song.performanceId === performanceId && (song.leaderUserId === currentUser.id || data.songMembers.some((member) => member.songId === song.id && member.userId === currentUser.id)));
 
   function exportBackup() {
     const payload = {
@@ -74,7 +77,7 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
     <Panel title="마이페이지" className="max-w-2xl">
       <div className="space-y-4">
         <div className="space-y-3 rounded-xl bg-muted p-4">
-          <p className="text-sm font-semibold">화면 색 <span className="font-normal text-muted-foreground">(이 기기에만 적용)</span></p>
+          <p className="text-sm font-semibold">화면 색</p>
           <div className="grid grid-cols-4 gap-2">
             {THEMES.map((item) => (
               <button key={item.id} type="button" onClick={() => chooseTheme(item.id)} className={cn("space-y-1.5 rounded-xl p-1.5 text-[11px] font-medium", theme === item.id && "ring-2 ring-foreground")}>
@@ -89,22 +92,28 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
           </div>
         </div>
         <div className="space-y-3 rounded-xl bg-muted p-4">
-          <p className="text-sm font-semibold">공연별 색 <span className="font-normal text-muted-foreground">(나에게만 적용)</span></p>
+          <p className="text-sm font-semibold">공연 색</p>
           {pickedPerformance ? (
             <>
               <Select label="" value={performanceId} onChange={setPerformanceId} options={performances.map((performance) => [performance.id, isPastPerformance(performance) ? `${performance.title} (지난 공연)` : performance.title])} />
-              <ColorDots value={performanceColor(pickedPerformance, currentUser)} onChange={setPerformanceColor} />
+              <ColorDots value={performanceColor(pickedPerformance, currentUser)} onChange={(color) => setMyColor("performanceColors", performanceId, color)} />
+              {mySongs.map((song) => (
+                <div key={song.id} className="space-y-2 pt-1">
+                  <p className="text-sm font-medium">{song.title}</p>
+                  <ColorDots small value={songColor(song, data, currentUser)} onChange={(color) => setMyColor("songColors", song.id, color)} />
+                </div>
+              ))}
             </>
           ) : (
             <p className="text-sm text-muted-foreground">공연이 없습니다.</p>
           )}
         </div>
         <div className="space-y-3 rounded-xl bg-muted p-4">
-          <p className="text-sm font-semibold">팀별 색 <span className="font-normal text-muted-foreground">(모두에게 적용)</span></p>
+          <p className="text-sm font-semibold">팀 색</p>
           {data.teams.filter((item) => item.isActive).map((item) => (
             <div key={item.id} className="space-y-2">
               <p className="text-sm font-medium">{item.name}</p>
-              <ColorDots small value={teamColor(item)} onChange={(color) => persist({ ...data, teams: data.teams.map((team) => team.id === item.id ? { ...team, color, updatedAt: nowIso() } : team) })} />
+              <ColorDots small value={teamColor(item, currentUser)} onChange={(color) => setMyColor("teamColors", item.id, color)} />
             </div>
           ))}
         </div>

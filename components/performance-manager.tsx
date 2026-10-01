@@ -2,7 +2,7 @@ import { Check, Clock3, Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
-import { alpha, isPastPerformance, palette, teamColor, performanceColor, inkOn } from "@/lib/schedule";
+import { alpha, isPastPerformance, palette, teamColor, performanceColor, inkOn, songColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -438,7 +438,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {focusSongs.map((song) => (
-                        <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)), color: inkOn(teamColor(data.teams.find((team) => team.id === song.teamId))) }}>
+                        <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: songColor(song, data, currentUser), color: inkOn(songColor(song, data, currentUser)) }}>
                           {song.title}{song.leaderUserId === focusMember.id && " (곡팀장)"}
                         </span>
                       ))}
@@ -465,7 +465,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               </div>
               <div className="grid max-h-80 gap-2 overflow-auto">
                 {filteredPerformanceUsers.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold" style={{ backgroundColor: alpha(teamColor(data.teams.find((team) => team.id === user.teamId)), "2E") }}>
+                  <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold" style={{ backgroundColor: alpha(teamColor(data.teams.find((team) => team.id === user.teamId), currentUser), "2E") }}>
                     <UserPill user={user} data={data} />
                     <SoftCheckbox checked={draftMemberIds.includes(user.id)} label="선택" onToggle={() => togglePerformanceMember(user.id)} />
                   </div>
@@ -505,7 +505,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     type="button"
                     key={team.id}
                     className={cn("rounded-full px-3 py-2 text-xs font-semibold transition", songMemberTeamFilter === team.id ? "text-white shadow-sm" : "text-foreground")}
-                    style={{ backgroundColor: songMemberTeamFilter === team.id ? teamColor(team) : alpha(teamColor(team), "35") }}
+                    style={{ backgroundColor: songMemberTeamFilter === team.id ? teamColor(team, currentUser) : alpha(teamColor(team, currentUser), "35") }}
                     onClick={() => setSongMemberTeamFilter(team.id)}
                   >
                     {team.name}팀만 보기
@@ -641,7 +641,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                 <SwipeActions key={song.id} onEdit={() => startEditSong(song)} onDelete={() => deleteSong(song.id)}>
                   <div
                     className={cn("relative cursor-pointer rounded-2xl p-4 pl-16 pr-14 transition", selectedForRuntime && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
-                    style={{ backgroundColor: teamColor(team), color: inkOn(teamColor(team)) }}
+                    style={{ backgroundColor: songColor(song, data, currentUser), color: inkOn(songColor(song, data, currentUser)) }}
                     role="button"
                     tabIndex={0}
                     aria-pressed={selectedForRuntime}
@@ -701,7 +701,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
               );
             }
             return (
-              <div key={song.id} className="rounded-2xl p-4 text-neutral-900" style={{ backgroundColor: teamColor(team) }}>
+              <div key={song.id} className="rounded-2xl p-4" style={{ backgroundColor: songColor(song, data, currentUser), color: inkOn(songColor(song, data, currentUser)) }}>
                   <div className="space-y-3">
                     <Field label="곡 / 무대 이름" value={editSongForm.title} onChange={(value) => setEditSongForm({ ...editSongForm, title: value })} />
                     <Field label="곡 시간 (선택, 분:초)" value={editSongForm.duration} onChange={(value) => setEditSongForm({ ...editSongForm, duration: value })} placeholder="예: 3:30" />

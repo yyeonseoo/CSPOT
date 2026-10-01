@@ -20,6 +20,9 @@ export type ClubUser = {
   teamId: string | null;
   teamColor: string;
   performanceColors?: Record<string, string>;
+  // 나에게만 보이는 색: 소속 팀 id / 곡 id 별
+  teamColors?: Record<string, string>;
+  songColors?: Record<string, string>;
   // "2026-1" = 26년 1학기
   activeTerms?: string[];
   role: Role;

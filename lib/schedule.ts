@@ -1,6 +1,6 @@
 import { minutesToTime, timeToMinutes, toDatetimeLocal } from "@/lib/format";
 import { archiveYears } from "@/lib/local-data";
-import type { AppData, ArchiveSong, ClubUser, Performance, PracticeCandidate, Schedule, ScheduleSurvey, Team } from "@/types/domain";
+import type { AppData, ArchiveSong, ClubUser, Performance, PracticeCandidate, Schedule, ScheduleSurvey, Song, Team } from "@/types/domain";
 
 export const defaultAccent = "#6FE3F2";
 
@@ -69,10 +69,15 @@ export function performanceColor(performance: Performance, user: ClubUser) {
   return picked ? currentColor(picked) : performanceAccent(performance);
 }
 
-export function teamColor(team?: Team) {
+export function teamColor(team?: Team, viewer?: ClubUser) {
   if (!team) return defaultAccent;
-  const color = currentColor(team.color ?? "");
+  const color = currentColor(viewer?.teamColors?.[team.id] ?? team.color ?? "");
   return pickColors.includes(color) ? color : fixedTeamColors[team.name] ?? defaultAccent;
+}
+
+// 곡 카드 색. 내가 고른 곡 색이 있으면 그 색, 없으면 소속 팀 색.
+export function songColor(song: Song, data: AppData, viewer?: ClubUser) {
+  return viewer?.songColors?.[song.id] ?? teamColor(data.teams.find((team) => team.id === song.teamId), viewer);
 }
 
 export function alpha(hex: string, opacity = "33") {
@@ -101,6 +106,8 @@ export function eventColor(schedule: Schedule, data: AppData, currentUser: ClubU
   if (schedule.type === "PERSONAL") return schedule.color && pickColors.includes(currentColor(schedule.color)) ? currentColor(schedule.color) : personalColor;
   // 연습은 곡마다 다른 색
   if (schedule.songId) {
+    const mine = currentUser.songColors?.[schedule.songId];
+    if (mine) return mine;
     const index = data.songs.findIndex((song) => song.id === schedule.songId);
     if (index >= 0) return palette[index % palette.length];
   }

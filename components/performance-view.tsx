@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDateTime, formatSongDuration } from "@/lib/format";
-import { isPastPerformance, teamColor, performanceColor, inkOn } from "@/lib/schedule";
+import { isPastPerformance, performanceColor, inkOn, songColor } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import type { AppData, Performance, ClubUser } from "@/types/domain";
 import { UserPill } from "@/components/items";
@@ -38,12 +38,12 @@ export function PerformanceView({ data, currentUser }: { data: AppData; currentU
           </details>
         )}
       </Panel>
-      {selected && <PerformanceInfo key={selected.id} data={data} performance={selected} />}
+      {selected && <PerformanceInfo key={selected.id} data={data} currentUser={currentUser} performance={selected} />}
     </section>
   );
 }
 
-function PerformanceInfo({ data, performance }: { data: AppData; performance: Performance }) {
+function PerformanceInfo({ data, currentUser, performance }: { data: AppData; currentUser: ClubUser; performance: Performance }) {
   const [tab, setTab] = useState<"songs" | "members">("songs");
   const [focusId, setFocusId] = useState("");
   const songs = data.songs.filter((song) => song.performanceId === performance.id).sort((a, b) => a.order - b.order);
@@ -66,9 +66,9 @@ function PerformanceInfo({ data, performance }: { data: AppData; performance: Pe
           {songs.map((song, index) => {
             const team = data.teams.find((item) => item.id === song.teamId);
             return (
-              <div key={song.id} className="rounded-2xl p-4 text-neutral-900" style={{ backgroundColor: teamColor(team) }}>
+              <div key={song.id} className="rounded-2xl p-4" style={{ backgroundColor: songColor(song, data, currentUser), color: inkOn(songColor(song, data, currentUser)) }}>
                 <p className="font-semibold">{index + 1}. {song.title}</p>
-                <p className="text-sm text-neutral-700">
+                <p className="text-sm opacity-70">
                   {team?.name ?? "팀 없음"} · 곡팀장 {data.users.find((user) => user.id === song.leaderUserId)?.name ?? "미지정"}
                   {song.durationSeconds ? ` · ${formatSongDuration(song.durationSeconds)}` : ""}
                 </p>
@@ -98,7 +98,7 @@ function PerformanceInfo({ data, performance }: { data: AppData; performance: Pe
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {focusSongs.map((song) => (
-                    <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: teamColor(data.teams.find((team) => team.id === song.teamId)), color: inkOn(teamColor(data.teams.find((team) => team.id === song.teamId))) }}>
+                    <span key={song.id} className="rounded-full px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: songColor(song, data, currentUser), color: inkOn(songColor(song, data, currentUser)) }}>
                       {song.title}{song.leaderUserId === focus.id && " (곡팀장)"}
                     </span>
                   ))}
