@@ -104,8 +104,10 @@ export default function HomePage() {
 
   function login(name: string) {
     if (!data) return "데이터를 불러오는 중입니다.";
-    const user = data.users.find((item) => item.name === name.trim() && item.status === "ACTIVE");
-    if (!user) return "등록된 이름이 없습니다. 관리자에게 멤버 등록을 요청해주세요.";
+    const id = name.trim();
+    const active = data.users.filter((item) => item.status === "ACTIVE");
+    const user = active.find((item) => item.username === id) ?? active.find((item) => item.name === id);
+    if (!user) return "등록된 아이디가 없습니다. 관리자에게 멤버 등록을 요청해주세요.";
     if (loginMode === "admin" && !isAdminRole(user.role)) return "관리자 권한이 없는 계정입니다.";
     const nextSession = { userId: user.id, portal: loginMode };
     writeSession(nextSession);

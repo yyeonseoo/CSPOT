@@ -5,7 +5,7 @@ import { isAppData, isPastPerformance, performanceColor, songColor, teamColor } 
 import { applyTheme, readTheme, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import type { AppData, ClubUser } from "@/types/domain";
-import { ColorDots, Panel, Select } from "@/components/ui";
+import { ColorDots, Field, Panel, PrimaryButton, Select } from "@/components/ui";
 
 export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: AppData; currentUser: ClubUser; adminMode: boolean; persist: (data: AppData) => void }) {
   // 예정 공연 먼저, 그다음 지난 공연(최근 순)
@@ -17,8 +17,21 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
   const pickedPerformance = performances.find((performance) => performance.id === performanceId);
   const [theme, setTheme] = useState(() => readTheme());
   const chooseTheme = (id: string) => { applyTheme(id); setTheme(id); };
+  const [loginId, setLoginId] = useState(currentUser.username);
+  const [idMessage, setIdMessage] = useState("");
   const [backupMessage, setBackupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function saveLoginId() {
+    const next = loginId.trim();
+    if (!next || next === currentUser.username) return;
+    if (data.users.some((user) => user.id !== currentUser.id && (user.username === next || user.name === next))) {
+      setIdMessage("이미 있는 아이디입니다.");
+      return;
+    }
+    persist({ ...data, users: data.users.map((user) => user.id === currentUser.id ? { ...user, username: next, updatedAt: nowIso() } : user) });
+    setIdMessage("바꿨습니다. 다음 로그인부터 새 아이디로 들어오세요.");
+  }
 
   // 이 페이지의 색은 모두 나에게만 보이는 색. 고르면 바로 저장.
   type ColorMap = "performanceColors" | "teamColors" | "songColors";
@@ -76,6 +89,11 @@ export function MyPagePanel({ data, currentUser, adminMode, persist }: { data: A
   return (
     <Panel title="마이페이지" className="max-w-2xl">
       <div className="space-y-4">
+        <div className="space-y-3 rounded-xl bg-muted p-4">
+          <Field label="아이디" value={loginId} onChange={(value) => { setLoginId(value); setIdMessage(""); }} />
+          <PrimaryButton onClick={saveLoginId} disabled={!loginId.trim() || loginId.trim() === currentUser.username}>아이디 바꾸기</PrimaryButton>
+          {idMessage && <p className="text-sm font-medium">{idMessage}</p>}
+        </div>
         <div className="space-y-3 rounded-xl bg-muted p-4">
           <p className="text-sm font-semibold">화면 색</p>
           <div className="grid grid-cols-4 gap-2">

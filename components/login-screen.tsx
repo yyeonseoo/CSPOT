@@ -36,7 +36,7 @@ export function LoginScreen({
             <button type="button" className={segmentClass(mode === "admin")} onClick={() => switchMode("admin")}>관리자</button>
           </div>
           <div className="space-y-4">
-            <Field label="이름" value={name} placeholder="예: 홍길동" onChange={setName} />
+            <Field label="아이디" value={name} placeholder="처음 아이디는 본명" onChange={setName} />
             {error && <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
             <button className="w-full rounded-full bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground">로그인</button>
           </div>
