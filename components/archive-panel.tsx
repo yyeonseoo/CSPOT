@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
-import { archiveYears, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
+import { archiveYears, byKorean, mergeArchiveItems, splitOriginalTag } from "@/lib/local-data";
 import { archiveSourceLabel, inkOn, teamColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ArchiveSong, SongMember, ClubUser } from "@/types/domain";
@@ -40,7 +40,8 @@ export function ArchivePanel({ data, currentUser, persist }: { data: AppData; cu
     .filter(({ selectedMatchCount, textMatches }) => (selectedNames.length > 0 ? selectedMatchCount > 0 : textMatches))
     .sort((a, b) => {
       if (b.selectedMatchCount !== a.selectedMatchCount) return b.selectedMatchCount - a.selectedMatchCount;
-      return a.item.songTitle.localeCompare(b.item.songTitle, "ko");
+      const latest = (item: ArchiveSong) => Math.max(0, ...archiveYears(item));
+      return latest(b.item) - latest(a.item) || byKorean(a.item.songTitle, b.item.songTitle);
     });
   // 연도 탭: 최신 연도부터
   const [yearTab, setYearTab] = useState("all");

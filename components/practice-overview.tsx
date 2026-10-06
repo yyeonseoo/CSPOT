@@ -95,7 +95,7 @@ export function DayTimeline({ survey, data, requests, selectedId, onSelect, high
   const onDate = (date: string) => requests.filter((request) => candidateBlock(request).date === date);
   const [date, setDate] = useState(() => dates.find((item) => onDate(item).length > 0) ?? dates[0]);
   const dayRequests = onDate(date);
-  const songIds = Array.from(new Set(dayRequests.map((request) => request.songId))).sort((a, b) => Number(highlightSongIds.includes(b)) - Number(highlightSongIds.includes(a)));
+  const songIds = Array.from(new Set(dayRequests.map((request) => request.songId))).sort((a, b) => Number(highlightSongIds.includes(b)) - Number(highlightSongIds.includes(a)) || songTitleOf(data, a).localeCompare(songTitleOf(data, b), "ko", { numeric: true }));
   const blocks = dayRequests.map((request) => ({ request, ...candidateBlock(request) }));
   // 요청이 있는 시간 앞뒤로 1시간씩 더 보여준다 (조사 범위 안에서).
   const from = Math.max(timeToMinutes(survey.timeStart), Math.floor(Math.min(...blocks.map((block) => timeToMinutes(block.start))) / 60) * 60 - 60);

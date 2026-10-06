@@ -155,9 +155,25 @@ export function readData(): AppData {
   const parsed = raw ? JSON.parse(raw) as AppData : createSeedData();
   const normalizedData = normalizeData(parsed);
   const seeded = Boolean(raw) && window.localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION;
-  const data = seeded ? normalizedData : applySeedData(normalizedData);
+  const data = sortForDisplay(seeded ? normalizedData : applySeedData(normalizedData));
   if (!seeded || JSON.stringify(data) !== JSON.stringify(parsed)) writeData(data);
   return data;
+}
+
+// 사전식(가나다, 숫자는 크기 순: 2 < 10)
+export const byKorean = (a: string, b: string) => a.localeCompare(b, "ko", { numeric: true });
+
+// 화면 목록이 이름/곡명 순으로 나오도록 배열 순서만 정렬한다. 공연 안 곡 순서는 order로 따로 정렬한다.
+export function sortForDisplay(data: AppData): AppData {
+  const nameOf = new Map(data.users.map((user) => [user.id, user.name]));
+  const byUserName = (a: string, b: string) => byKorean(nameOf.get(a) ?? "", nameOf.get(b) ?? "");
+  return {
+    ...data,
+    users: [...data.users].sort((a, b) => byKorean(a.name, b.name)),
+    songs: [...data.songs].sort((a, b) => byKorean(a.title, b.title)),
+    songMembers: [...data.songMembers].sort((a, b) => byUserName(a.userId, b.userId)),
+    performances: data.performances.map((performance) => ({ ...performance, memberIds: [...(performance.memberIds ?? [])].sort(byUserName) })),
+  };
 }
 
 export function normalizeData(parsed: AppData): AppData {
@@ -175,7 +191,7 @@ export function normalizeData(parsed: AppData): AppData {
   const surveyIds = new Set(surveys.map((survey) => survey.id));
   const { ambiguousTimes: _legacyAmbiguousTimes, ...current } = parsed as AppData & { ambiguousTimes?: unknown };
   void _legacyAmbiguousTimes;
-  return {
+  return sortForDisplay({
     ...current,
     archiveSongs: dedupeArchiveSongs((parsed.archiveSongs ?? []).map((song) => ({ ...song, performanceTitle: song.performanceTitle.replace(/\s*·\s*/g, ", ") }))),
     surveys,
@@ -188,7 +204,7 @@ export function normalizeData(parsed: AppData): AppData {
       performanceColors: user.performanceColors ?? {},
       activeTerms: user.activeTerms ?? (activeYears ?? inferActiveYears(user, archive2025MemberNames, activeCurrentUserIds)).map(seedTerm),
     })),
-  };
+  });
 }
 
 function applySeedData(data: AppData): AppData {

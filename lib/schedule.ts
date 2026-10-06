@@ -139,11 +139,13 @@ export function surveySongIds(survey: ScheduleSurvey, data: AppData) {
 export function surveyUserIds(survey: Pick<ScheduleSurvey, "performanceIds">, data: AppData) {
   if (survey.performanceIds.length === 0) return data.users.map((user) => user.id);
   const songIds = new Set(data.songs.filter((song) => survey.performanceIds.includes(song.performanceId)).map((song) => song.id));
-  return Array.from(new Set([
+  const ids = new Set([
     ...data.performances.filter((performance) => survey.performanceIds.includes(performance.id)).flatMap((performance) => performance.memberIds),
     ...data.songMembers.filter((member) => songIds.has(member.songId)).map((member) => member.userId),
     ...data.songs.filter((song) => songIds.has(song.id)).map((song) => song.leaderUserId),
-  ]));
+  ]);
+  // data.users 순서(이름 순)를 따른다
+  return data.users.filter((user) => ids.has(user.id)).map((user) => user.id);
 }
 
 export function surveyLabel(survey: ScheduleSurvey) {

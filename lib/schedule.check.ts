@@ -74,3 +74,7 @@ const leaderData = {
 assert.deepEqual(activeLeaderSongs("u", leaderData, "2026-10-01T00:00:00.000Z").map((song) => song.id), ["new"]);
 
 console.log("schedule checks passed");
+
+// 이름/곡명 정렬: 가나다 순(한글 먼저, 영어 뒤), 숫자는 크기 순
+import { byKorean } from "./local-data";
+assert.deepEqual(["하나", "Flip flop", "가나", "곡10", "곡2", "나비"].sort(byKorean), ["가나", "곡2", "곡10", "나비", "하나", "Flip flop"]);

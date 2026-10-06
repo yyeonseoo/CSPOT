@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createInitialData, normalizeData, readData, SESSION_KEY, syncCurrentSongsToArchive, writeData } from "@/lib/local-data";
+import { createInitialData, normalizeData, readData, SESSION_KEY, sortForDisplay, syncCurrentSongsToArchive, writeData } from "@/lib/local-data";
 import { isAdminRole } from "@/lib/permissions";
 import { CLUB_CODE_KEY, diffData, loadRemote, saveRemote } from "@/lib/remote-data";
 import { readSession, writeSession, type Portal, type Session } from "@/lib/session";
@@ -94,7 +94,7 @@ export default function HomePage() {
   }, [mode]);
 
   function persist(next: AppData) {
-    const synced = syncCurrentSongsToArchive(next);
+    const synced = sortForDisplay(syncCurrentSongsToArchive(next));
     setData(synced);
     if (mode === "remote") save(synced);
     else writeData(synced);
