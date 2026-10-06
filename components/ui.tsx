@@ -13,11 +13,11 @@ export function SoftCheckbox({ checked, label, onToggle, className }: { checked:
       onClick={onToggle}
       className={cn(
         "inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition",
-        checked ? "bg-white text-foreground" : "bg-background text-muted-foreground hover:bg-background",
+        checked ? "bg-foreground text-background" : "bg-background text-muted-foreground hover:bg-background",
         className,
       )}
     >
-      <span className={cn("grid h-4 w-4 place-items-center rounded transition", checked ? "bg-primary text-primary-foreground" : "bg-background")}>
+      <span className={cn("grid h-4 w-4 place-items-center rounded transition", checked ? "bg-background text-foreground" : "bg-muted")}>
         {checked && <Check className="h-3 w-3 stroke-[3]" />}
       </span>
       {label}

@@ -127,10 +127,11 @@ function MyAvailabilityPanel({ survey, data, currentUser, persist }: PanelProps 
   );
 }
 
-function LeaderRequestForm({ survey, song, data, currentUser, persist }: PanelProps & { survey: ScheduleSurvey; song: Song }) {
+// memberIds: 관리자가 직접 작성할 때 고른 참여 인원. 비어 있으면 곡 팀원 전체.
+export function LeaderRequestForm({ survey, song, data, currentUser, persist, memberIds: pickedIds = [], admin = false }: PanelProps & { survey: ScheduleSurvey; song: Song; memberIds?: string[]; admin?: boolean }) {
   const dates = getDateRange(survey.startDate, survey.endDate);
   const times = getSurveyTimes(survey);
-  const memberIds = getSongUserIds(song.id, data);
+  const memberIds = pickedIds.length ? pickedIds : getSongUserIds(song.id, data);
   const { counts, respondedCount } = getSurveyHeatmap(survey, data, memberIds);
   const requests = data.practiceCandidates.filter((candidate) => candidate.songId === song.id && candidate.surveyId === survey.id);
   const pending = requests.filter((candidate) => candidate.status === "PENDING");
@@ -148,7 +149,8 @@ function LeaderRequestForm({ survey, song, data, currentUser, persist }: PanelPr
   const blocks = slotsToBlocks(selected, dates, times, survey.slotMinutes);
   // 장소는 블록의 모든 칸에 저장해서, 블록 앞에 칸을 더하거나 두 블록이 이어져도 고른 장소가 남는다.
   const locationOf = (block: { date: string; times: string[] }) => block.times.map((time) => locations[slotKey(block.date, time)]).find((value) => value !== undefined) ?? "수련관";
-  const open = survey.status === "OPEN";
+  // 관리자는 마감된 조사에도 직접 넣을 수 있다.
+  const open = admin || survey.status === "OPEN";
 
   function send() {
     const createdAt = nowIso();
@@ -161,6 +163,7 @@ function LeaderRequestForm({ survey, song, data, currentUser, persist }: PanelPr
       startsAt: makeLocalIso(block.date, block.start),
       endsAt: makeLocalIso(block.date, block.end),
       location: locationOf(block).trim() || "기타",
+      ...(pickedIds.length > 0 && { memberIds: pickedIds }),
       status: "PENDING",
       createdAt,
       updatedAt: createdAt,

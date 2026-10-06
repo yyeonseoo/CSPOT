@@ -1,12 +1,13 @@
 import { ChevronLeft, Check, X } from "lucide-react";
 import { useState } from "react";
 import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, today } from "@/lib/format";
-import { candidateBlock, findPracticeConflicts, isPastPerformance, getSongUserIds, slotKey, slotsCovering, surveyLabel, surveyUserIds, timesBetween } from "@/lib/schedule";
+import { candidateBlock, findPracticeConflicts, isPastPerformance, getSongUserIds, requestUserIds, slotKey, slotsCovering, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
 import { describeConflict, DayTimeline, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
 import { AvailabilityBreakdown, formatSlotDate, LocationField } from "@/components/slot-grid";
 import { Field, Panel, PrimaryButton, Select, SoftCheckbox, Tabs } from "@/components/ui";
+import { LeaderRequestForm } from "@/components/survey-panel";
 
 const hours = Array.from({ length: 25 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
 const statusLabels = { PENDING: "대기", APPROVED: "확정", REJECTED: "반려" };
@@ -186,6 +187,7 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
           ) : surveyForm}
         </Panel>
         {survey && requests.length > 0 && <Tabs tabs={[["grid", "전체 표"], ["day", "날짜별"]]} value={viewTab} onChange={setViewTab} />}
+        {survey && <ManualRequest key={survey.id} survey={survey} data={data} currentUser={currentUser} persist={persist} />}
         {survey && (requests.length === 0 || viewTab === "grid") && (
           <Panel title="팀별 희망 시간">
             {requests.length === 0 ? (
@@ -230,6 +232,47 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
   );
 }
 
+// 앱을 안 쓰고 카톡으로 시간을 주는 팀을 위해 관리자가 대신 요청을 만든다. 팀은 필수, 참여 인원은 선택.
+function ManualRequest({ survey, data, currentUser, persist }: PanelProps & { survey: ScheduleSurvey }) {
+  const [open, setOpen] = useState(false);
+  const songs = data.songs.filter((song) => surveySongIds(survey, data).includes(song.id));
+  const [songId, setSongId] = useState("");
+  const song = songs.find((item) => item.id === songId);
+  const pendingIds = (id: string) => data.practiceCandidates.find((item) => item.songId === id && item.surveyId === survey.id && item.status === "PENDING")?.memberIds ?? [];
+  const [memberIds, setMemberIds] = useState<string[]>([]);
+  // 곡 팀원을 앞에, 나머지 조사 대상을 뒤에
+  const teamIds = song ? getSongUserIds(song.id, data) : [];
+  const people = [...teamIds, ...surveyUserIds(survey, data).filter((id) => !teamIds.includes(id))]
+    .map((id) => data.users.find((user) => user.id === id))
+    .filter((user): user is ClubUser => Boolean(user));
+
+  return (
+    <Panel title="직접 작성">
+      {!open ? (
+        <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setOpen(true)}>팀 희망 시간 직접 넣기</button>
+      ) : (
+        <div className="space-y-4">
+          <Select label="팀" value={songId} onChange={(id) => { setSongId(id); setMemberIds(pendingIds(id)); }} options={[["", "팀 고르기"], ...songs.map((item) => [item.id, item.title])]} />
+          {song && (
+            <>
+              <div className="text-sm font-medium">
+                <p className="mb-2">참여 인원 <span className="text-muted-foreground">{memberIds.length ? `${memberIds.length}명` : "안 고르면 곡 팀원 전체"}</span></p>
+                <div className="flex flex-wrap gap-1.5">
+                  {people.map((user) => (
+                    <SoftCheckbox key={user.id} checked={memberIds.includes(user.id)} label={user.name} onToggle={() => setMemberIds(memberIds.includes(user.id) ? memberIds.filter((id) => id !== user.id) : [...memberIds, user.id])} />
+                  ))}
+                </div>
+              </div>
+              <LeaderRequestForm key={`${survey.id}-${song.id}`} survey={survey} song={song} data={data} currentUser={currentUser} persist={persist} memberIds={memberIds} admin />
+            </>
+          )}
+          <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => { setOpen(false); setSongId(""); setMemberIds([]); }}>닫기</button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 function RequestReview({ request, requests, survey, data, currentUser, persist }: PanelProps & { request: PracticeCandidate; requests: PracticeCandidate[]; survey: ScheduleSurvey }) {
   const song = data.songs.find((item) => item.id === request.songId);
   // 여러 팀이 한 시간대를 나눠 쓸 수 있게 10분 단위로 조정한다.
@@ -237,7 +280,7 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
   const [edit, setEdit] = useState(() => ({ ...candidateBlock(request), location: request.location }));
   const endOptions = [...startOptions.filter((time) => time > edit.start), survey.timeEnd].filter((time, index, values) => values.indexOf(time) === index);
   const durationMinutes = timeToMinutes(edit.end) - timeToMinutes(edit.start);
-  const memberIds = getSongUserIds(request.songId, data);
+  const memberIds = requestUserIds(request, data);
   const pending = request.status === "PENDING";
   const valid = edit.start < edit.end;
   const startsAt = makeLocalIso(edit.date, edit.start);

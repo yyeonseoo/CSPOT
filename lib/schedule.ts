@@ -216,13 +216,17 @@ export function availabilitySegments(survey: ScheduleSurvey, data: AppData, user
 
 // 시간이 겹치는 다른 곡 요청 중 같은 장소를 쓰거나(외부 대관은 장소가 제각각이라 제외) 겹치는 팀원이 있는 것.
 // 장소도 다르고 겹치는 사람도 없으면 동시에 연습할 수 있으므로 충돌이 아니다.
+export function requestUserIds(request: PracticeCandidate, data: AppData) {
+  return request.memberIds?.length ? request.memberIds : getSongUserIds(request.songId, data);
+}
+
 export function findPracticeConflicts(target: PracticeCandidate, candidates: PracticeCandidate[], data: AppData) {
-  const members = getSongUserIds(target.songId, data);
+  const members = requestUserIds(target, data);
   return candidates.flatMap((other) => {
     if (other.id === target.id || other.songId === target.songId || other.status === "REJECTED") return [];
     if (!(target.startsAt < other.endsAt && other.startsAt < target.endsAt)) return [];
     const sameLocation = target.location === other.location && target.location !== "외부 대관";
-    const sharedUserIds = getSongUserIds(other.songId, data).filter((userId) => members.includes(userId));
+    const sharedUserIds = requestUserIds(other, data).filter((userId) => members.includes(userId));
     return sameLocation || sharedUserIds.length > 0 ? [{ other, sameLocation, sharedUserIds }] : [];
   });
 }

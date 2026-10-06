@@ -151,6 +151,8 @@ export type PracticeCandidate = {
   startsAt: string;
   endsAt: string;
   location: string;
+  // 관리자가 직접 작성하면서 고른 참여 인원. 없으면 곡 팀원 전체.
+  memberIds?: string[];
   status: "PENDING" | "APPROVED" | "REJECTED";
   reviewedBy?: string;
   reviewedAt?: string;

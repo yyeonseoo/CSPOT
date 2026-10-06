@@ -47,6 +47,9 @@ const others = [
   request("5", "y", "T20", "T22", "수련관"), // 시간이 맞닿기만 함 -> 가능
 ];
 assert.deepEqual(findPracticeConflicts(x, others, conflictData).map((c) => [c.other.id, c.sameLocation, c.sharedUserIds]), [["2", false, ["a"]], ["3", true, []]]);
+// 관리자가 참여 인원을 골라 넣은 요청은 곡 팀원 대신 그 인원으로 겹침을 본다: x에 b만 참여 -> 4번과 b가 겹침, 2번은 a가 빠져서 가능
+const xPicked = { ...x, location: "외부 대관", memberIds: ["b"] };
+assert.deepEqual(findPracticeConflicts(xPicked, others, conflictData).map((c) => [c.other.id, c.sharedUserIds]), [["3", ["b"]], ["4", ["b"]]]);
 
 // 10분 단위 시간은 걸치는 30분 칸을 모두 본다: 19:10-20:20 -> 19:00, 19:30, 20:00
 const slotSurvey = { timeStart: "18:00", timeEnd: "22:00", slotMinutes: 30 } as ScheduleSurvey;
