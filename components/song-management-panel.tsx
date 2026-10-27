@@ -4,7 +4,7 @@ import { getDateRange, makeLocalIso, minutesToTime, nowIso, timeToMinutes, today
 import { candidateBlock, findPracticeConflicts, isPastPerformance, getSongUserIds, requestUserIds, slotKey, slotsCovering, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, PracticeCandidate, Schedule, ScheduleSurvey } from "@/types/domain";
-import { describeConflict, DayTimeline, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
+import { describeConflict, DayTimeline, personalScheduleOf, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
 import { AvailabilityBreakdown, formatSlotDate, LocationField } from "@/components/slot-grid";
 import { Field, Panel, PrimaryButton, Select, SoftCheckbox, Tabs } from "@/components/ui";
 import { LeaderRequestForm } from "@/components/survey-panel";
@@ -364,6 +364,25 @@ function RequestReview({ request, requests, survey, data, currentUser, persist }
       ...data,
       practiceCandidates: data.practiceCandidates.map((item) => item.id === request.id ? rejected : item),
     });
+  }
+
+  const personal = personalScheduleOf(data, request.songId);
+  if (personal) {
+    return (
+      <div className="space-y-3">
+        <div>
+          <p className="text-lg font-semibold">{personal.title}</p>
+          <p className="text-sm font-medium text-muted-foreground">개인 연습, {memberIds.map((userId) => data.users.find((user) => user.id === userId)?.name).filter(Boolean).join(", ")}</p>
+        </div>
+        <p className="rounded-xl bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground">확정됨: {formatSlotDate(edit.date)} {edit.start}~{edit.end}, {request.location}</p>
+        {conflicts.length > 0 && (
+          <div className="space-y-1 rounded-xl bg-orange-50 p-3 text-sm text-orange-700 dark:bg-orange-500/10 dark:text-orange-300">
+            {conflicts.map((conflict) => <p key={conflict.other.id}>{describeConflict(data, target, conflict)}</p>)}
+          </div>
+        )}
+        <button type="button" className="w-full rounded-full bg-background px-4 py-3 text-sm font-semibold text-destructive" onClick={() => { if (window.confirm(`"${personal.title}"을 삭제할까요? 캘린더에서도 지워집니다.`)) persist({ ...data, schedules: data.schedules.filter((schedule) => schedule.id !== personal.id) }); }}>삭제</button>
+      </div>
+    );
   }
 
   return (

@@ -9,12 +9,24 @@ import { formatSlotDate, SlotGrid } from "@/components/slot-grid";
 
 export type Conflict = ReturnType<typeof findPracticeConflicts>[number];
 
+// 개인 연습은 곡이 없어서 일정마다 따로 곡 자리(personal-일정id)를 준다. 개인 연습끼리도 겹침을 본다.
+export const personalSongId = (scheduleId: string) => `personal-${scheduleId}`;
+export const personalScheduleOf = (data: AppData, songId: string) => data.schedules.find((schedule) => personalSongId(schedule.id) === songId);
+
 export function songTitleOf(data: AppData, songId: string) {
-  return data.songs.find((song) => song.id === songId)?.title ?? "삭제된 곡";
+  return data.songs.find((song) => song.id === songId)?.title ?? personalScheduleOf(data, songId)?.title ?? "삭제된 곡";
+}
+
+// 조사 기간 안의 개인 연습을 확정된 요청처럼 만들어서 표와 겹침 확인에 같이 넣는다.
+function personalRequests(survey: ScheduleSurvey, data: AppData): PracticeCandidate[] {
+  return data.schedules
+    .filter((schedule) => schedule.memberIds && schedule.status === "CONFIRMED")
+    .map((schedule) => ({ id: schedule.id, performanceId: "", songId: personalSongId(schedule.id), surveyId: survey.id, proposedBy: schedule.createdBy, startsAt: schedule.startsAt, endsAt: schedule.endsAt, location: schedule.location ?? "기타", memberIds: schedule.memberIds, status: "APPROVED" as const, createdAt: schedule.createdAt, updatedAt: schedule.updatedAt }))
+    .filter((request) => { const { date } = candidateBlock(request); return date >= survey.startDate && date <= survey.endDate; });
 }
 
 export function surveyRequests(survey: ScheduleSurvey, data: AppData) {
-  return data.practiceCandidates.filter((candidate) => candidate.surveyId === survey.id && candidate.status !== "REJECTED").sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  return [...data.practiceCandidates.filter((candidate) => candidate.surveyId === survey.id && candidate.status !== "REJECTED"), ...personalRequests(survey, data)].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
 // 요청 전체 시간 중 실제로 겹치는 구간을 같이 적는다. 표의 한 칸에서는 안 겹쳐도 요청의 다른 시간에서 겹칠 수 있다.
@@ -133,7 +145,7 @@ export function DayTimeline({ survey, data, requests, selectedId, onSelect, high
               ))}
             </div>
             {songIds.map((songId) => {
-              const memberIds = getSongUserIds(songId, data);
+              const memberIds = personalScheduleOf(data, songId)?.memberIds ?? getSongUserIds(songId, data);
               return (
                 <div key={songId} className="relative overflow-hidden rounded-xl bg-slate-100" style={{ height: to - from }}>
                   {slots.map((time) => {
