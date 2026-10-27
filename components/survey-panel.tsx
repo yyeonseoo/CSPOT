@@ -28,7 +28,7 @@ function SurveyPicker({ surveys, survey, onChange }: { surveys: ScheduleSurvey[]
 // 팀원 탭: 나를 대상으로 한 조사에 가능 시간 응답
 export function SurveyPanel({ data, currentUser, persist }: PanelProps) {
   // 팀원에게는 진행 중인 조사만 보인다. 마감된 조사는 관리자 화면에서만 본다.
-  const mySurveys = data.surveys.filter((item) => item.status === "OPEN" && surveyUserIds(item, data).includes(currentUser.id)).reverse();
+  const mySurveys = data.surveys.filter((item) => item.status === "OPEN" && surveyUserIds(item, data).includes(currentUser.id));
   const [survey, setSurveyId] = useSurveyChoice(mySurveys);
 
   if (!survey) return <Panel title="연습 일정 조사"><p className="text-sm text-muted-foreground">진행 중인 조사가 없습니다.</p></Panel>;
@@ -44,7 +44,7 @@ export function SurveyPanel({ data, currentUser, persist }: PanelProps) {
 // 곡팀장 탭: 내가 팀장인 곡이 들어 있는 조사에서 희망 시간 전송, 겹침 현황 확인
 export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
   const myLeaderSongIds = activeLeaderSongs(currentUser.id, data).map((item) => item.id);
-  const leaderSurveys = data.surveys.filter((item) => item.status === "OPEN" && surveySongIds(item, data).some((songId) => myLeaderSongIds.includes(songId))).reverse();
+  const leaderSurveys = data.surveys.filter((item) => item.status === "OPEN" && surveySongIds(item, data).some((songId) => myLeaderSongIds.includes(songId)));
   const [survey, setSurveyId] = useSurveyChoice(leaderSurveys);
   const [songId, setSongId] = useState("");
   const [leaderTab, setLeaderTab] = useState<"send" | "overlap">("send");

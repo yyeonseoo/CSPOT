@@ -91,8 +91,8 @@ export function AvailabilityGrid({
     <SlotGrid
       dates={dates}
       times={times}
-      // 하루 전체(48칸)도 화면 높이 안에 들어오도록 칸 높이를 줄인다.
-      rowHeight={`clamp(10px, calc((100dvh - 240px) / ${times.length}), 26px)`}
+      // 칸이 적으면 화면 높이에 맞춰 키우고, 하루 전체(48칸)여도 누르기 쉬운 높이는 지킨다.
+      rowHeight={`clamp(16px, calc((100dvh - 240px) / ${times.length}), 32px)`}
       gridProps={{
         className: "select-none",
         // 세로 드래그는 칠하기, 가로 밀기는 날짜 스크롤
@@ -126,7 +126,7 @@ export function AvailabilityGrid({
             disabled={disabled}
             className={cn(
               "block h-full w-full text-[9px] font-semibold leading-none text-neutral-800 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-default",
-              active ? "bg-primary text-primary-foreground" : "bg-background",
+              active ? "bg-primary text-primary-foreground" : "bg-muted-foreground/15 enabled:hover:bg-primary/30",
             )}
             style={counts && !active && intensity ? { backgroundColor: `hsl(95 72% ${90 - intensity * 30}%)`, color: "#171717" } : undefined}
             // 포인터 입력은 표에서 처리하고, 키보드(Enter/Space)만 여기서 처리한다.

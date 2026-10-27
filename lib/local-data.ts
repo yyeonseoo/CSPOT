@@ -171,6 +171,7 @@ export function sortForDisplay(data: AppData): AppData {
     ...data,
     users: [...data.users].sort((a, b) => byKorean(a.name, b.name)),
     songs: [...data.songs].sort((a, b) => byKorean(a.title, b.title)),
+    surveys: [...data.surveys].sort((a, b) => byKorean(a.title, b.title) || a.startDate.localeCompare(b.startDate)),
     songMembers: [...data.songMembers].sort((a, b) => byUserName(a.userId, b.userId)),
     performances: data.performances.map((performance) => ({ ...performance, memberIds: [...(performance.memberIds ?? [])].sort(byUserName) })),
   };

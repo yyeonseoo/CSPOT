@@ -30,8 +30,11 @@ function approveRequests(data: AppData, currentUser: ClubUser, items: PracticeCa
 }
 
 export function SongManagementPanel({ data, currentUser, persist }: PanelProps) {
-  const [surveyId, setSurveyId] = useState(data.surveys[data.surveys.length - 1]?.id ?? "");
-  const survey = data.surveys.find((item) => item.id === surveyId) ?? data.surveys[data.surveys.length - 1];
+  const [surveyId, setSurveyId] = useState("");
+  const openSurveys = data.surveys.filter((item) => item.status === "OPEN");
+  const survey = data.surveys.find((item) => item.id === surveyId) ?? openSurveys[openSurveys.length - 1] ?? data.surveys[data.surveys.length - 1];
+  // 마감된 조사는 목록에서 빼되, 지금 보고 있는 조사는 다시 열 수 있게 남긴다.
+  const pickableSurveys = data.surveys.filter((item) => item.status === "OPEN" || item.id === survey?.id);
   const [form, setForm] = useState({ title: "", startDate: today(), endDate: today(), timeStart: "18:00", timeEnd: "22:00", performanceIds: [] as string[] });
   const [showForm, setShowForm] = useState(false);
   // 수정 중인 조사 id. 비어 있으면 새 조사
@@ -163,8 +166,8 @@ export function SongManagementPanel({ data, currentUser, persist }: PanelProps) 
         <Panel title="연습 일정 조사">
           {survey ? (
             <div className="space-y-2">
-              {data.surveys.length > 1 && (
-                <Select label="조사 선택" value={survey.id} onChange={(value) => { setSurveyId(value); closeSheet(); }} options={data.surveys.slice().reverse().map((item) => [item.id, surveyLabel(item)])} />
+              {pickableSurveys.length > 1 && (
+                <Select label="조사 선택" value={survey.id} onChange={(value) => { setSurveyId(value); closeSheet(); }} options={pickableSurveys.map((item) => [item.id, surveyLabel(item)])} />
               )}
               <div className="flex items-center justify-between gap-3 rounded-xl bg-muted p-3">
                 <p className="min-w-0 text-sm font-semibold">
