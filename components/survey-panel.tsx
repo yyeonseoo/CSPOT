@@ -3,6 +3,7 @@ import { getDateRange, makeLocalIso, nowIso } from "@/lib/format";
 import { activeLeaderSongs, candidateBlock, findPracticeConflicts, getSongUserIds, getSurveyHeatmap, getSurveyTimes, slotKey, slotsToBlocks, surveyLabel, surveySongIds, surveyUserIds, timesBetween } from "@/lib/schedule";
 import { uid } from "@/lib/utils";
 import type { AppData, AvailabilityResponse, ClubUser, PracticeCandidate, ScheduleSurvey, Song } from "@/types/domain";
+import { LeaderSongEditor } from "@/components/leader-song-editor";
 import { DayTimeline, describeConflict, RequestGrid, songTitleOf, surveyRequests } from "@/components/practice-overview";
 import { AvailabilityBreakdown, AvailabilityGrid, formatSlotDate, LocationField } from "@/components/slot-grid";
 import { Panel, PrimaryButton, Select, Tabs } from "@/components/ui";
@@ -41,15 +42,17 @@ export function SurveyPanel({ data, currentUser, persist }: PanelProps) {
   );
 }
 
-// 곡팀장 탭: 내가 팀장인 곡이 들어 있는 조사에서 희망 시간 전송, 겹침 현황 확인
+// 곡팀장 탭: 내 곡 수정, 내가 팀장인 곡이 들어 있는 조사에서 희망 시간 전송, 겹침 현황 확인
 export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
   const myLeaderSongIds = activeLeaderSongs(currentUser.id, data).map((item) => item.id);
   const leaderSurveys = data.surveys.filter((item) => item.status === "OPEN" && surveySongIds(item, data).some((songId) => myLeaderSongIds.includes(songId)));
   const [survey, setSurveyId] = useSurveyChoice(leaderSurveys);
   const [songId, setSongId] = useState("");
-  const [leaderTab, setLeaderTab] = useState<"send" | "overlap">("send");
+  const [leaderTab, setLeaderTab] = useState<"songs" | "send" | "overlap">("send");
+  const tabs = <Tabs tabs={[["send", "희망 시간 보내기"], ["songs", "내 곡"], ["overlap", "겹침 현황"]]} value={leaderTab} onChange={setLeaderTab} />;
 
-  if (!survey) return <Panel title="곡팀장"><p className="text-sm text-muted-foreground">내 곡이 포함된 진행 중인 조사가 없습니다.</p></Panel>;
+  if (leaderTab === "songs") return <section className="space-y-4">{tabs}<LeaderSongEditor data={data} currentUser={currentUser} persist={persist} /></section>;
+  if (!survey) return <section className="space-y-4">{tabs}<Panel title="곡팀장"><p className="text-sm text-muted-foreground">내 곡이 포함된 진행 중인 조사가 없습니다.</p></Panel></section>;
 
   const songIds = surveySongIds(survey, data);
   const leaderSongs = data.songs.filter((item) => myLeaderSongIds.includes(item.id) && songIds.includes(item.id));
@@ -57,8 +60,8 @@ export function LeaderPanel({ data, currentUser, persist }: PanelProps) {
 
   return (
     <section className="space-y-4">
+      {tabs}
       <SurveyPicker surveys={leaderSurveys} survey={survey} onChange={setSurveyId} />
-      <Tabs tabs={[["send", "희망 시간 보내기"], ["overlap", "겹침 현황"]]} value={leaderTab} onChange={setLeaderTab} />
       {song && leaderTab === "send" && (
         <Panel title="희망 연습 시간 보내기">
           <div className="space-y-4">
