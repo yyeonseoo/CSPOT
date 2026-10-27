@@ -249,10 +249,17 @@ function ManualRequest({ survey, data, currentUser, persist }: PanelProps & { su
     .map((id) => data.users.find((user) => user.id === id))
     .filter((user): user is ClubUser => Boolean(user));
 
+  const [personalOpen, setPersonalOpen] = useState(false);
+
   return (
     <Panel title="직접 작성">
-      {!open ? (
-        <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setOpen(true)}>팀 희망 시간 직접 넣기</button>
+      {personalOpen ? (
+        <PersonalPractice survey={survey} data={data} currentUser={currentUser} persist={persist} close={() => setPersonalOpen(false)} />
+      ) : !open ? (
+        <div className="grid gap-2">
+          <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setOpen(true)}>팀 희망 시간 직접 넣기</button>
+          <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={() => setPersonalOpen(true)}>개인 연습 직접 넣기</button>
+        </div>
       ) : (
         <div className="space-y-4">
           <Select label="팀" value={songId} onChange={(id) => { setSongId(id); setMemberIds(pendingIds(id)); }} options={[["", "팀 고르기"], ...songs.map((item) => [item.id, item.title])]} />
@@ -273,6 +280,43 @@ function ManualRequest({ survey, data, currentUser, persist }: PanelProps & { su
         </div>
       )}
     </Panel>
+  );
+}
+
+// 곡 팀과 상관없는 연습. 요청 없이 바로 캘린더에 확정하고, 고른 사람에게만 보인다.
+function PersonalPractice({ survey, data, currentUser, persist, close }: PanelProps & { survey: ScheduleSurvey; close: () => void }) {
+  const [form, setForm] = useState({ title: "개인 연습", date: survey.startDate, start: "18:00", end: "20:00", location: "수련관", memberIds: [] as string[] });
+  const valid = form.title.trim() !== "" && form.date !== "" && form.start < form.end && form.memberIds.length > 0;
+  const people = data.users.filter((user) => user.status === "ACTIVE");
+
+  function save() {
+    if (!valid) return;
+    const createdAt = nowIso();
+    const schedule: Schedule = { id: uid("schedule"), type: "PRACTICE", title: form.title.trim(), startsAt: makeLocalIso(form.date, form.start), endsAt: makeLocalIso(form.date, form.end), location: form.location.trim() || "기타", memberIds: form.memberIds, visibility: "MEMBERS_ONLY", status: "CONFIRMED", createdBy: currentUser.id, createdAt, updatedAt: createdAt };
+    persist({ ...data, schedules: [...data.schedules, schedule] });
+    close();
+  }
+
+  return (
+    <div className="space-y-4">
+      <Field label="제목" value={form.title} onChange={(title) => setForm({ ...form, title })} />
+      <div className="grid grid-cols-3 gap-2">
+        <Field label="날짜" type="date" value={form.date} onChange={(date) => setForm({ ...form, date })} />
+        <Field label="시작" type="time" value={form.start} onChange={(start) => setForm({ ...form, start })} />
+        <Field label="종료" type="time" value={form.end} onChange={(end) => setForm({ ...form, end })} />
+      </div>
+      <LocationField value={form.location} onChange={(location) => setForm({ ...form, location })} />
+      <div className="text-sm font-medium">
+        <p className="mb-2">참여 인원 <span className="text-muted-foreground">{form.memberIds.length}명</span></p>
+        <div className="flex max-h-56 flex-wrap gap-1.5 overflow-auto">
+          {people.map((user) => (
+            <SoftCheckbox key={user.id} checked={form.memberIds.includes(user.id)} label={user.name} onToggle={() => setForm((prev) => ({ ...prev, memberIds: prev.memberIds.includes(user.id) ? prev.memberIds.filter((id) => id !== user.id) : [...prev.memberIds, user.id] }))} />
+          ))}
+        </div>
+      </div>
+      <PrimaryButton onClick={save} disabled={!valid}>캘린더에 넣기</PrimaryButton>
+      <button type="button" className="w-full rounded-xl bg-muted px-4 py-3 text-sm font-medium" onClick={close}>닫기</button>
+    </div>
   );
 }
 

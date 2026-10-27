@@ -50,6 +50,7 @@ export function getVisibleSchedules(data: AppData, currentUser: ClubUser, adminM
     if (adminMode) return true;
     if (schedule.visibility === "ADMINS_ONLY") return false;
     if (schedule.visibility === "PUBLIC") return true;
+    if (schedule.visibility === "MEMBERS_ONLY" && schedule.memberIds) return schedule.memberIds.includes(currentUser.id);
     if (schedule.visibility === "MEMBERS_ONLY" && schedule.songId) {
       return data.songs.some((song) => song.id === schedule.songId && song.leaderUserId === currentUser.id)
         || data.songMembers.some((member) => member.songId === schedule.songId && member.userId === currentUser.id);

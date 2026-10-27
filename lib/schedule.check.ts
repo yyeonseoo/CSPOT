@@ -78,3 +78,11 @@ console.log("schedule checks passed");
 // 이름/곡명 정렬: 가나다 순(한글 먼저, 영어 뒤), 숫자는 크기 순
 import { byKorean } from "./local-data";
 assert.deepEqual(["하나", "Flip flop", "가나", "곡10", "곡2", "나비"].sort(byKorean), ["가나", "곡2", "곡10", "나비", "하나", "Flip flop"]);
+
+// 개인 연습: 고른 사람에게만 보인다
+import { getVisibleSchedules } from "./schedule";
+import type { ClubUser, Schedule } from "../types/domain";
+const personal = { id: "p1", status: "CONFIRMED", visibility: "MEMBERS_ONLY", memberIds: ["a"] } as Schedule;
+const viewer = (id: string) => ({ id }) as ClubUser;
+assert.equal(getVisibleSchedules({ schedules: [personal], songs: [], songMembers: [] } as unknown as AppData, viewer("a"), false).length, 1);
+assert.equal(getVisibleSchedules({ schedules: [personal], songs: [], songMembers: [] } as unknown as AppData, viewer("b"), false).length, 0);

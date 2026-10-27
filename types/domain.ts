@@ -110,6 +110,8 @@ export type Schedule = {
   // 연습 요청을 확정해서 만든 일정이면 그 요청 id
   candidateId?: string;
   ownerUserId?: string;
+  // 곡 없이 관리자가 인원을 직접 고른 연습(개인 연습)
+  memberIds?: string[];
   visibility: ScheduleVisibility;
   status: "CONFIRMED" | "CANCELED";
   createdBy: string;
