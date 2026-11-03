@@ -285,7 +285,7 @@ function ManualRequest({ survey, data, currentUser, persist }: PanelProps & { su
 
 // 곡 팀과 상관없는 연습. 요청 없이 바로 캘린더에 확정하고, 고른 사람에게만 보인다.
 function PersonalPractice({ survey, data, currentUser, persist, close }: PanelProps & { survey: ScheduleSurvey; close: () => void }) {
-  const [form, setForm] = useState({ title: "개인 연습", date: survey.startDate, start: "18:00", end: "20:00", location: "수련관", memberIds: [] as string[] });
+  const [form, setForm] = useState({ title: "개인 연습", date: survey.startDate, start: "18:00", end: "20:00", location: "수련관 1층", memberIds: [] as string[] });
   const valid = form.title.trim() !== "" && form.date !== "" && form.start < form.end && form.memberIds.length > 0;
   const people = data.users.filter((user) => user.status === "ACTIVE");
 

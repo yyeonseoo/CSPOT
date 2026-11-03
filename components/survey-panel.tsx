@@ -151,7 +151,7 @@ export function LeaderRequestForm({ survey, song, data, currentUser, persist, me
   const [message, setMessage] = useState("");
   const blocks = slotsToBlocks(selected, dates, times, survey.slotMinutes);
   // 장소는 블록의 모든 칸에 저장해서, 블록 앞에 칸을 더하거나 두 블록이 이어져도 고른 장소가 남는다.
-  const locationOf = (block: { date: string; times: string[] }) => block.times.map((time) => locations[slotKey(block.date, time)]).find((value) => value !== undefined) ?? "수련관";
+  const locationOf = (block: { date: string; times: string[] }) => block.times.map((time) => locations[slotKey(block.date, time)]).find((value) => value !== undefined) ?? "수련관 1층";
   // 관리자는 마감된 조사에도 직접 넣을 수 있다.
   const open = admin || survey.status === "OPEN";
 

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { AppData, ScheduleSurvey } from "@/types/domain";
 import { Field, Select } from "@/components/ui";
 
-const presetLocations = ["수련관", "외부 대관"];
+const presetLocations = ["수련관 1층", "수련관 2층", "외부 대관"];
 
 function weekday(date: string) {
   return new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(new Date(`${date}T00:00:00`));
