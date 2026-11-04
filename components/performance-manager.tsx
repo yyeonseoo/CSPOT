@@ -1,5 +1,5 @@
 import { Check, Clock3, Download, GripVertical, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
 import { alpha, isPastPerformance, palette, teamColor, performanceColor, inkOn, songColor } from "@/lib/schedule";
@@ -111,6 +111,10 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
   const [draggingSongId, setDraggingSongId] = useState<string | null>(null);
   const [dragOrder, setDragOrder] = useState<string[] | null>(null);
+  const [dragY, setDragY] = useState(0);
+  const grabOffset = useRef(0);
+  const cardTops = useRef(new Map<string, number>());
+  const songListRef = useRef<HTMLDivElement>(null);
   const [selectedRuntimeSongIds, setSelectedRuntimeSongIds] = useState<string[]>([]);
   const [transitionInput, setTransitionInput] = useState(String(performance.transitionSeconds ?? 5));
   const [breakAfterSongId, setBreakAfterSongId] = useState("");
@@ -256,28 +260,61 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     saveSongOrder(moveId(orderedSongs.map((song) => song.id), songId, position));
   }
 
+  const songCards = () => Array.from(songListRef.current?.querySelectorAll<HTMLElement>(":scope > [data-song-id]") ?? []);
+
   // 손잡이를 잡고 끄는 동안은 화면 순서(dragOrder)만 바꾸고, 놓을 때 저장한다.
   function startSongDrag(event: React.PointerEvent<HTMLButtonElement>, songId: string) {
     event.stopPropagation();
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
+    grabOffset.current = event.clientY - (event.currentTarget.closest("[data-song-id]")?.getBoundingClientRect().top ?? event.clientY);
+    cardTops.current = new Map();
+    setDragY(event.clientY);
     setDraggingSongId(songId);
     setDragOrder(orderedSongs.map((song) => song.id));
   }
 
   function moveSongDrag(event: React.PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
-    if (!draggingSongId || !dragOrder) return;
-    const over = (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-song-id]");
+    if (!draggingSongId || !dragOrder || !songListRef.current) return;
+    setDragY(event.clientY);
+    // 잡은 카드가 손가락 아래에 있으므로 화면 좌표 대신 카드의 원래 자리(offsetTop)로 어느 카드 위인지 찾는다.
+    const y = event.clientY - songListRef.current.getBoundingClientRect().top;
+    const over = songCards().find((card) => card.dataset.songId !== draggingSongId && y >= card.offsetTop && y < card.offsetTop + card.offsetHeight);
     const overId = over?.dataset.songId;
-    if (!over || !overId || overId === draggingSongId) return;
+    if (!over || !overId) return;
     // 카드 높이가 달라도 왔다갔다 하지 않게 상대 카드의 가운데를 넘어야 자리를 바꾼다.
-    const rect = over.getBoundingClientRect();
+    const middle = over.offsetTop + over.offsetHeight / 2;
     const from = dragOrder.indexOf(draggingSongId);
     const to = dragOrder.indexOf(overId);
-    if (to > from ? event.clientY < rect.top + rect.height / 2 : event.clientY > rect.top + rect.height / 2) return;
+    if (to > from ? y < middle : y > middle) return;
     setDragOrder(moveId(dragOrder, draggingSongId, to + 1));
   }
+
+  // 잡은 카드는 손가락을 따라오고, 자리가 바뀐 다른 카드는 원래 자리에서 새 자리로 미끄러진다.
+  useLayoutEffect(() => {
+    const list = songListRef.current;
+    if (!list) return;
+    const listTop = list.getBoundingClientRect().top;
+    for (const card of songCards()) {
+      const id = card.dataset.songId ?? "";
+      if (id === draggingSongId) {
+        card.style.transition = "none";
+        card.style.transform = `translateY(${dragY - grabOffset.current - listTop - card.offsetTop}px)`;
+        continue;
+      }
+      const before = cardTops.current.get(id);
+      if (before !== undefined && before !== card.offsetTop) {
+        card.style.transition = "none";
+        card.style.transform = `translateY(${before - card.offsetTop}px)`;
+        requestAnimationFrame(() => { card.style.transition = "transform 150ms ease"; card.style.transform = ""; });
+      } else if (card.style.transform && !draggingSongId) {
+        card.style.transition = "transform 150ms ease";
+        card.style.transform = "";
+      }
+      cardTops.current.set(id, card.offsetTop);
+    }
+  }, [dragY, dragOrder, draggingSongId]);
 
   function endSongDrag(event: React.PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -670,7 +707,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           </div>
         </div>
         <p className="mb-3 text-sm font-semibold">음원 제출 {songs.filter((song) => song.audioSubmitted).length}/{songs.length}곡</p>
-        <div className="grid gap-3">
+        <div ref={songListRef} className="relative grid gap-3">
           {listedSongs.map((song, songIndex) => {
             const team = data.teams.find((item) => item.id === song.teamId);
             const members = data.songMembers.filter((member) => member.songId === song.id).map((member) => data.users.find((user) => user.id === member.userId)).filter(Boolean) as ClubUser[];
@@ -678,7 +715,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             const selectedForRuntime = selectedRuntimeSongIds.includes(song.id);
             if (!editing) {
               return (
-                <div key={song.id} data-song-id={song.id} className={cn(draggingSongId === song.id && "opacity-80")}>
+                <div key={song.id} data-song-id={song.id} className={cn("rounded-2xl", draggingSongId === song.id && "relative z-10 shadow-2xl")}>
                 <SwipeActions onEdit={() => startEditSong(song)} onDelete={() => deleteSong(song.id)}>
                   <div
                     className={cn("relative cursor-pointer rounded-2xl p-4 pl-16 pr-14 transition", selectedForRuntime && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
