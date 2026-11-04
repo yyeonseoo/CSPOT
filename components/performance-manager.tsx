@@ -5,7 +5,8 @@ import { fixSongLeaders } from "@/lib/local-data";
 import { alpha, isPastPerformance, palette, teamColor, performanceColor, inkOn, songColor } from "@/lib/schedule";
 import { cn, uid } from "@/lib/utils";
 import type { AppData, ClubUser, Notice, Performance, Schedule, Song, SongMember } from "@/types/domain";
-import { UserPill } from "@/components/items";
+import { ArchiveImport } from "@/components/archive-import";
+import { AudioToggle, UserPill } from "@/components/items";
 import { DateTimeField, Field, Panel, PrimaryButton, Select, SoftCheckbox, SwipeActions, Tabs, TextArea } from "@/components/ui";
 
 export function PerformanceManager({ data, currentUser, persist }: { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void }) {
@@ -535,6 +536,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
           </div>
         </Panel>
       )}
+      {detailTab === "create" && <div className="mt-3"><ArchiveImport performance={performance} data={data} persist={persist} onDone={() => setDetailTab("songs")} /></div>}
       {detailTab === "notice" && (
         <Panel title="공연 상세 공지" className="bg-background p-3 sm:p-6">
           <div className="space-y-3">
@@ -630,6 +632,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
             )}
           </div>
         </div>
+        <p className="mb-3 text-sm font-semibold">음원 제출 {songs.filter((song) => song.audioSubmitted).length}/{songs.length}곡</p>
         <div className="grid gap-3">
           {orderedSongs.map((song, songIndex) => {
             const team = data.teams.find((item) => item.id === song.teamId);
@@ -694,6 +697,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     </div>
                     <div className="mt-3 flex gap-2" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       <button type="button" className="rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" onClick={() => startEditSong(song)}>팀 수정</button>
+                      <AudioToggle song={song} data={data} persist={persist} />
                       <button type="button" className="rounded-full bg-white/80 px-4 py-1.5 text-xs font-semibold text-neutral-900" onClick={() => deleteSong(song.id)}>삭제</button>
                     </div>
                   </div>

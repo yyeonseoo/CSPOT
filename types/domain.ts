@@ -65,6 +65,7 @@ export type Song = {
   requiredPracticeCount: number;
   estimatedPracticeMinutes: number;
   order: number;
+  audioSubmitted?: boolean;
   status: "ACTIVE" | "ARCHIVED";
   createdAt: string;
   updatedAt: string;

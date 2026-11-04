@@ -1,6 +1,6 @@
-import { formatDateTime, toDatetimeLocal } from "@/lib/format";
+import { formatDateTime, nowIso, toDatetimeLocal } from "@/lib/format";
 import { eventColor, inkOn, teamColor } from "@/lib/schedule";
-import type { AppData, ClubUser, Notice, Schedule } from "@/types/domain";
+import type { AppData, ClubUser, Notice, Schedule, Song } from "@/types/domain";
 
 export function CalendarEventPill({ schedule, data, currentUser }: { schedule: Schedule; data: AppData; currentUser: ClubUser }) {
   const color = eventColor(schedule, data, currentUser);
@@ -42,5 +42,19 @@ export function UserPill({ user, data, viewer }: { user: ClubUser; data: AppData
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
       {user.name}
     </span>
+  );
+}
+
+// 곡 카드의 음원 제출 체크. 관리자와 곡팀장이 같이 쓴다.
+export function AudioToggle({ song, data, persist }: { song: Song; data: AppData; persist: (data: AppData) => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={Boolean(song.audioSubmitted)}
+      className={song.audioSubmitted ? "rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" : "rounded-full bg-white/80 px-4 py-1.5 text-xs font-semibold text-neutral-900"}
+      onClick={() => persist({ ...data, songs: data.songs.map((item) => item.id === song.id ? { ...item, audioSubmitted: !item.audioSubmitted, updatedAt: nowIso() } : item) })}
+    >
+      {song.audioSubmitted ? "음원 제출 완료" : "음원 미제출"}
+    </button>
   );
 }
