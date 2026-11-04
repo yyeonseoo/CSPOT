@@ -45,7 +45,7 @@ export function UserPill({ user, data, viewer }: { user: ClubUser; data: AppData
   );
 }
 
-// 곡 카드의 음원 제출 체크. 관리자와 곡팀장이 같이 쓴다.
+// 곡 카드의 음원 제출 체크. 관리자만 쓴다.
 export function AudioToggle({ song, data, persist }: { song: Song; data: AppData; persist: (data: AppData) => void }) {
   return (
     <button

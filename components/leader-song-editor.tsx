@@ -3,7 +3,7 @@ import { formatSongDuration, nowIso, parseSongDuration } from "@/lib/format";
 import { activeLeaderSongs, inkOn, songColor } from "@/lib/schedule";
 import { uid } from "@/lib/utils";
 import type { AppData, ClubUser, Song, SongMember } from "@/types/domain";
-import { AudioToggle, UserPill } from "@/components/items";
+import { UserPill } from "@/components/items";
 import { Field, Panel, PrimaryButton, Select, SoftCheckbox } from "@/components/ui";
 
 type PanelProps = { data: AppData; currentUser: ClubUser; persist: (data: AppData) => void };
@@ -17,13 +17,13 @@ export function LeaderSongEditor({ data, currentUser, persist }: PanelProps) {
       <div className="grid gap-3">
         {songs.map((song) => editingId === song.id
           ? <SongForm key={song.id} song={song} data={data} currentUser={currentUser} persist={persist} close={() => setEditingId("")} />
-          : <SongCard key={song.id} song={song} data={data} currentUser={currentUser} persist={persist} onEdit={() => setEditingId(song.id)} />)}
+          : <SongCard key={song.id} song={song} data={data} currentUser={currentUser} onEdit={() => setEditingId(song.id)} />)}
       </div>
     </Panel>
   );
 }
 
-function SongCard({ song, data, currentUser, persist, onEdit }: PanelProps & { song: Song; onEdit: () => void }) {
+function SongCard({ song, data, currentUser, onEdit }: { song: Song; data: AppData; currentUser: ClubUser; onEdit: () => void }) {
   const color = songColor(song, data, currentUser);
   const performance = data.performances.find((item) => item.id === song.performanceId);
   const team = data.teams.find((item) => item.id === song.teamId);
@@ -37,10 +37,7 @@ function SongCard({ song, data, currentUser, persist, onEdit }: PanelProps & { s
       <div className="mt-3 flex flex-wrap gap-2">
         {members.map((user) => <UserPill key={user.id} user={user} data={data} viewer={currentUser} />)}
       </div>
-      <div className="mt-3 flex gap-2">
-        <button type="button" className="rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" onClick={onEdit}>팀 수정</button>
-        <AudioToggle song={song} data={data} persist={persist} />
-      </div>
+      <button type="button" className="mt-3 rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white" onClick={onEdit}>팀 수정</button>
     </div>
   );
 }
