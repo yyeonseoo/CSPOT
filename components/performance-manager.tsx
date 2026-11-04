@@ -630,7 +630,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
         </div>
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className="text-sm font-semibold">음원 제출 {songs.filter((song) => song.audioSubmitted).length}/{songs.length}곡</p>
-          {!orderingSetlist && orderedSongs.length > 1 && <button type="button" className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground" onClick={() => setOrderingSetlist(true)}>순서 정하기</button>}
+          {!orderingSetlist && orderedSongs.length > 1 && <button type="button" className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground" onClick={() => setOrderingSetlist(true)}>순서 바꾸기</button>}
         </div>
         {orderingSetlist ? <SetlistOrder songs={orderedSongs} data={data} currentUser={currentUser} onSave={saveSongOrder} onClose={() => setOrderingSetlist(false)} /> : <div className="grid gap-3">
           {orderedSongs.map((song, songIndex) => {
