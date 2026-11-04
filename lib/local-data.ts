@@ -373,7 +373,16 @@ export function syncCurrentSongsToArchive(data: AppData): AppData {
   });
 
   const currentKeys = new Set(currentArchives.map((song) => song.archiveKey));
-  const archivedOnly = data.archiveSongs.filter((song) => !song.archiveKey.startsWith("current-") && !currentKeys.has(song.archiveKey));
+  // 합쳐진 이력 카드는 연결된 곡 중 가장 최근에 고친 곡의 시간을 따른다.
+  const linkedDuration = (item: ArchiveSong) => data.songs
+    .filter((song) => item.linkedCurrentSongIds?.includes(song.id) && song.durationSeconds)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.durationSeconds;
+  const archivedOnly = data.archiveSongs
+    .filter((song) => !song.archiveKey.startsWith("current-") && !currentKeys.has(song.archiveKey))
+    .map((item) => {
+      const durationSeconds = linkedDuration(item);
+      return durationSeconds && durationSeconds !== item.durationSeconds ? { ...item, durationSeconds } : item;
+    });
   const archiveSongs = [...archivedOnly, ...currentArchives];
 
   return { ...data, archiveSongs };

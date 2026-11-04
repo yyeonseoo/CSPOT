@@ -86,3 +86,10 @@ const personal = { id: "p1", status: "CONFIRMED", visibility: "MEMBERS_ONLY", me
 const viewer = (id: string) => ({ id }) as ClubUser;
 assert.equal(getVisibleSchedules({ schedules: [personal], songs: [], songMembers: [] } as unknown as AppData, viewer("a"), false).length, 1);
 assert.equal(getVisibleSchedules({ schedules: [personal], songs: [], songMembers: [] } as unknown as AppData, viewer("b"), false).length, 0);
+
+// 합쳐진 이력 카드는 연결된 곡에서 고친 시간을 따른다
+import { syncCurrentSongsToArchive } from "./local-data";
+import type { ArchiveSong, Song } from "../types/domain";
+const merged = { id: "m", archiveKey: "merged-m", linkedCurrentSongIds: ["s1"], durationSeconds: 100, memberNames: [] } as unknown as ArchiveSong;
+const edited = { id: "s1", performanceId: "gone", durationSeconds: 200, updatedAt: "2026-11-01" } as Song;
+assert.equal(syncCurrentSongsToArchive({ archiveSongs: [merged], songs: [edited], performances: [], songMembers: [], users: [] } as unknown as AppData).archiveSongs[0].durationSeconds, 200);
