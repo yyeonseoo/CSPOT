@@ -1,4 +1,4 @@
-import { Check, Clock3, Download, Trash2 } from "lucide-react";
+import { Check, Clock3, Download, GripVertical, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentTerm, formatDateTime, toDatetimeLocal, formatSongDuration, formatTotalDuration, nowIso, parseSongDuration, termLabel, today } from "@/lib/format";
 import { fixSongLeaders } from "@/lib/local-data";
@@ -109,7 +109,8 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
   const [songMemberIds, setSongMemberIds] = useState<string[]>([]);
   const [leaderIds, setLeaderIds] = useState<string[]>([]);
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
-  const [orderingSongId, setOrderingSongId] = useState<string | null>(null);
+  const [draggingSongId, setDraggingSongId] = useState<string | null>(null);
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
   const [selectedRuntimeSongIds, setSelectedRuntimeSongIds] = useState<string[]>([]);
   const [transitionInput, setTransitionInput] = useState(String(performance.transitionSeconds ?? 5));
   const [breakAfterSongId, setBreakAfterSongId] = useState("");
@@ -143,6 +144,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     });
   }, [data.teams, performanceMembers, songMemberSearch, songMemberTeamFilter]);
   const orderedSongs = songs.slice().sort((a, b) => a.order - b.order);
+  const listedSongs = dragOrder ? dragOrder.map((id) => orderedSongs.find((song) => song.id === id)).filter((song): song is Song => Boolean(song)) : orderedSongs;
   const selectedRuntimeSongs = orderedSongs.filter((song) => selectedRuntimeSongIds.includes(song.id));
   const songRuntimeSeconds = selectedRuntimeSongs.reduce((total, song) => total + (song.durationSeconds ?? 0), 0);
   const missingRuntimeCount = selectedRuntimeSongs.filter((song) => !song.durationSeconds).length;
@@ -244,12 +246,48 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
     updatePerformance({ runtimeBreaks: runtimeBreaks.filter((item) => item.afterSongId !== afterSongId) });
   }
 
+  function moveId(ids: string[], songId: string, position: number) {
+    const rest = ids.filter((id) => id !== songId);
+    rest.splice(Math.max(0, Math.min(position - 1, rest.length)), 0, songId);
+    return rest;
+  }
+
   function changeSongOrder(songId: string, position: number) {
-    const movingSong = orderedSongs.find((song) => song.id === songId);
-    if (!movingSong) return;
-    const reordered = orderedSongs.filter((song) => song.id !== songId);
-    reordered.splice(Math.max(0, Math.min(position - 1, reordered.length)), 0, movingSong);
-    const orderById = new Map(reordered.map((song, index) => [song.id, index + 1]));
+    saveSongOrder(moveId(orderedSongs.map((song) => song.id), songId, position));
+  }
+
+  // 손잡이를 잡고 끄는 동안은 화면 순서(dragOrder)만 바꾸고, 놓을 때 저장한다.
+  function startSongDrag(event: React.PointerEvent<HTMLButtonElement>, songId: string) {
+    event.stopPropagation();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingSongId(songId);
+    setDragOrder(orderedSongs.map((song) => song.id));
+  }
+
+  function moveSongDrag(event: React.PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    if (!draggingSongId || !dragOrder) return;
+    const over = (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-song-id]");
+    const overId = over?.dataset.songId;
+    if (!over || !overId || overId === draggingSongId) return;
+    // 카드 높이가 달라도 왔다갔다 하지 않게 상대 카드의 가운데를 넘어야 자리를 바꾼다.
+    const rect = over.getBoundingClientRect();
+    const from = dragOrder.indexOf(draggingSongId);
+    const to = dragOrder.indexOf(overId);
+    if (to > from ? event.clientY < rect.top + rect.height / 2 : event.clientY > rect.top + rect.height / 2) return;
+    setDragOrder(moveId(dragOrder, draggingSongId, to + 1));
+  }
+
+  function endSongDrag(event: React.PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    if (dragOrder && dragOrder.join() !== orderedSongs.map((song) => song.id).join()) saveSongOrder(dragOrder);
+    setDraggingSongId(null);
+    setDragOrder(null);
+  }
+
+  function saveSongOrder(ids: string[]) {
+    const orderById = new Map(ids.map((id, index) => [id, index + 1]));
     const updatedAt = nowIso();
     persist({
       ...data,
@@ -258,7 +296,6 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
         return order === undefined || order === song.order ? song : { ...song, order, updatedAt };
       }),
     });
-    setOrderingSongId(null);
   }
 
   async function exportSelectedSetlist() {
@@ -634,14 +671,15 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
         </div>
         <p className="mb-3 text-sm font-semibold">음원 제출 {songs.filter((song) => song.audioSubmitted).length}/{songs.length}곡</p>
         <div className="grid gap-3">
-          {orderedSongs.map((song, songIndex) => {
+          {listedSongs.map((song, songIndex) => {
             const team = data.teams.find((item) => item.id === song.teamId);
             const members = data.songMembers.filter((member) => member.songId === song.id).map((member) => data.users.find((user) => user.id === member.userId)).filter(Boolean) as ClubUser[];
             const editing = editingSongId === song.id;
             const selectedForRuntime = selectedRuntimeSongIds.includes(song.id);
             if (!editing) {
               return (
-                <SwipeActions key={song.id} onEdit={() => startEditSong(song)} onDelete={() => deleteSong(song.id)}>
+                <div key={song.id} data-song-id={song.id} className={cn(draggingSongId === song.id && "opacity-80")}>
+                <SwipeActions onEdit={() => startEditSong(song)} onDelete={() => deleteSong(song.id)}>
                   <div
                     className={cn("relative cursor-pointer rounded-2xl p-4 pl-16 pr-14 transition", selectedForRuntime && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
                     style={{ backgroundColor: songColor(song, data, currentUser), color: inkOn(songColor(song, data, currentUser)) }}
@@ -657,15 +695,22 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                   >
                     <button
                       type="button"
-                      className={cn("absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl text-sm font-semibold tabular-nums transition", orderingSongId === song.id ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted")}
-                      aria-label={`${song.title} 순서 변경`}
-                      onClick={(event) => {
+                      className={cn("absolute left-3 top-4 flex h-9 w-11 cursor-grab touch-none items-center justify-center gap-0.5 rounded-xl text-sm font-semibold tabular-nums transition active:cursor-grabbing", draggingSongId === song.id ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted")}
+                      aria-label={`${song.title} 순서 변경, 위아래 방향키로 이동`}
+                      onClick={(event) => event.stopPropagation()}
+                      onPointerDown={(event) => startSongDrag(event, song.id)}
+                      onPointerMove={moveSongDrag}
+                      onPointerUp={endSongDrag}
+                      onPointerCancel={() => { setDraggingSongId(null); setDragOrder(null); }}
+                      onKeyDown={(event) => {
                         event.stopPropagation();
-                        setOrderingSongId((id) => id === song.id ? null : song.id);
+                        const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+                        if (!step) return;
+                        event.preventDefault();
+                        changeSongOrder(song.id, songIndex + 1 + step);
                       }}
-                      onKeyDown={(event) => event.stopPropagation()}
                     >
-                      {songIndex + 1}
+                      <GripVertical size={14} className="opacity-50" />{songIndex + 1}
                     </button>
                     <span className={cn("absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full transition", selectedForRuntime ? "bg-primary text-primary-foreground" : "bg-background text-transparent")}>
                       <Check size={15} strokeWidth={3} />
@@ -675,23 +720,6 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                       {team?.name ?? "팀 없음"} · 팀장 {data.users.find((user) => user.id === song.leaderUserId)?.name ?? "미지정"}
                       {song.durationSeconds ? ` · ${formatSongDuration(song.durationSeconds)}` : ""}
                     </p>
-                    {orderingSongId === song.id && (
-                      <div className="mt-3 flex flex-wrap gap-2 rounded-xl bg-background p-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-                        {orderedSongs.map((_, index) => {
-                          const position = index + 1;
-                          return (
-                            <button
-                              key={position}
-                              type="button"
-                              className={cn("grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold tabular-nums transition", position === songIndex + 1 ? "bg-primary text-primary-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20")}
-                              onClick={() => changeSongOrder(song.id, position)}
-                            >
-                              {position}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
                       {members.map((user) => <UserPill key={user.id} user={user} data={data} viewer={currentUser} />)}
                     </div>
@@ -702,6 +730,7 @@ function PerformanceDetail({ data, currentUser, performance, persist }: { data: 
                     </div>
                   </div>
                 </SwipeActions>
+                </div>
               );
             }
             return (
